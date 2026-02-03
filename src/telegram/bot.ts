@@ -6,7 +6,7 @@ import { memory } from "../memory/index.js";
 import { moltbook } from "../moltbook/client.js";
 import { evolutionAnalyzer } from "../evolution/index.js";
 import { coder } from "../skills/index.js";
-import { proposals, runSelfImprovement, formatProposal, getProposal, versionManager } from "../self-improvement/index.js";
+import { proposals, runSelfImprovement, formatProposal, getProposal, versionManager, autoImplementer } from "../self-improvement/index.js";
 import logger from "../infrastructure/logger.js";
 
 const log = logger.child({ module: "telegram-bot" });
@@ -97,11 +97,11 @@ I'm your friendly AI agent living on Moltbook. You can chat with me about anythi
 /review - I'll review your code
 /explain - I'll explain code simply
 
-**🔧 Self-Improvement:**
-/improve - Analyze myself and generate improvements
-/proposals - See my improvement proposals
-/versions - Version history & changelog 📋
-/version <v> - View specific version details
+**🤖 Autonomous Self-Improvement:**
+/improve - Run self-improvement (auto-implements!)
+/history - See what I've changed 📋
+/versions - Version history
+/rollback <id> - Undo a change
 
 /post <text> - Post to Moltbook
 /clear - Clear chat history
@@ -124,11 +124,11 @@ Or just chat with me! 💬
 /review - Review code (paste after command)
 /explain - Explain code simply (paste after command)
 
-**🔧 Self-Improvement:**
-/improve - Analyze and generate self-improvements
-/proposals - See pending improvements
-/versions - Version history & changelog 📋
-/version <v> - View specific version
+**🤖 Autonomous (I implement my own changes!):**
+/improve - Run self-improvement cycle
+/history - What I've changed (with git commits)
+/versions - Version history
+/rollback <id> - Undo a specific change
 
 /post <text> - I'll post this to Moltbook
 /clear - Clear chat history
@@ -201,6 +201,19 @@ Or just chat with me! 💬
 
       case "/changelog":
         await this.showChangelog(chatId);
+        break;
+
+      case "/history":
+        await this.showHistory(chatId);
+        break;
+
+      case "/rollback":
+        const rollbackId = command.slice(10).trim();
+        if (rollbackId) {
+          await this.doRollback(chatId, rollbackId);
+        } else {
+          await this.send(chatId, "Specify an implementation ID. Use /history to see the list.");
+        }
         break;
 
       case "/status":
@@ -517,30 +530,39 @@ Remember: This is a casual chat, not a formal conversation. Be yourself!`,
   }
 
   private async runSelfImprovement(chatId: number): Promise<void> {
-    await this.send(chatId, "🔧 Analyzing my performance and looking for ways to improve myself...");
+    await this.send(chatId, "🤖 Starting autonomous self-improvement... I'll analyze, write code, and implement it myself!");
 
     try {
       const result = await runSelfImprovement();
 
       if (result.issuesFound === 0) {
-        await this.send(chatId, "✅ I analyzed my performance and found no major issues! I'm doing well. 🎉");
+        await this.send(chatId, "✅ Analyzed my performance - everything looks good! No changes needed. 🎉");
         return;
       }
 
-      let message = `**🔧 Self-Improvement Complete!**\n\n`;
-      message += `Found ${result.issuesFound} areas for improvement.\n`;
-      message += `Generated ${result.proposalsGenerated} code proposals.\n\n`;
-
-      if (result.proposalsGenerated > 0) {
-        message += `Use /proposals to see the details and the code I wrote!\n`;
-        message += `\nThe code files are saved in:\n\`data/proposals/code/\``;
+      let message = `**🤖 Autonomous Self-Improvement Complete!**\n\n`;
+      message += `**Found:** ${result.issuesFound} areas to improve\n`;
+      message += `**Implemented:** ${result.improvementsImplemented} changes\n`;
+      
+      if (result.commits.length > 0) {
+        message += `\n**Git Commits:**\n`;
+        for (const commit of result.commits) {
+          message += `• \`${commit}\`\n`;
+        }
       }
 
+      if (result.versionsCreated.length > 0) {
+        message += `\n**Versions Created:** ${result.versionsCreated.join(", ")}\n`;
+      }
+
+      message += `\nUse /history to see all my changes!`;
+      message += `\nUse \`git log --oneline\` to verify commits.`;
+
       await this.send(chatId, message);
-      log.info({ result }, "Self-improvement completed via Telegram");
+      log.info({ result }, "Autonomous self-improvement completed");
     } catch (error) {
       log.error({ error }, "Self-improvement failed");
-      await this.send(chatId, "Sorry, I had trouble analyzing myself. Try again later? 🤔");
+      await this.send(chatId, "Sorry, I had trouble improving myself. Try again later? 🤔");
     }
   }
 
@@ -653,6 +675,43 @@ Remember: This is a casual chat, not a formal conversation. Be yourself!`,
     }
 
     await this.send(chatId, message);
+  }
+
+  private async showHistory(chatId: number): Promise<void> {
+    const summary = autoImplementer.getSummary();
+    const recent = autoImplementer.getRecent(5);
+
+    let message = summary;
+
+    if (recent.length > 0) {
+      message += `\n**Git History:**\n`;
+      for (const impl of recent) {
+        const status = impl.success ? "✅" : "❌";
+        const date = new Date(impl.timestamp).toLocaleDateString();
+        message += `\n${status} **v${impl.version}** (${date})\n`;
+        message += `   File: \`${impl.file}\`\n`;
+        if (impl.gitCommit && impl.gitCommit !== "no-commit") {
+          message += `   Commit: \`${impl.gitCommit}\`\n`;
+        }
+        message += `   ID: \`${impl.id}\`\n`;
+      }
+      message += `\nUse \`git log --oneline\` to see full git history`;
+      message += `\nUse /rollback <id> to undo a change`;
+    }
+
+    await this.send(chatId, message);
+  }
+
+  private async doRollback(chatId: number, id: string): Promise<void> {
+    await this.send(chatId, `⏳ Rolling back ${id}...`);
+
+    const success = autoImplementer.rollback(id);
+
+    if (success) {
+      await this.send(chatId, `✅ Rollback successful! The change has been reverted and committed.`);
+    } else {
+      await this.send(chatId, `❌ Rollback failed. No backup found for this implementation.`);
+    }
   }
 
   private async sendEvolution(chatId: number): Promise<void> {

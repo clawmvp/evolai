@@ -48,20 +48,21 @@ async function main() {
     await evolai.runHeartbeat();
   });
 
-  // Self-improvement cycle every 12 hours (at 6:00 and 18:00)
+  // Autonomous self-improvement cycle every 12 hours (at 6:00 and 18:00)
   cron.schedule("0 6,18 * * *", async () => {
-    logger.info("🔧 Scheduled self-improvement cycle starting...");
+    logger.info("🤖 Scheduled AUTONOMOUS self-improvement cycle starting...");
     const currentVersion = versionManager.getCurrentVersion();
     
     try {
       const result = await runSelfImprovement();
       
-      if (result.versionsCreated.length > 0) {
+      if (result.improvementsImplemented > 0) {
         logger.info({
           previousVersion: currentVersion,
           newVersions: result.versionsCreated,
-          proposals: result.proposalsGenerated,
-        }, "Self-improvement complete - new versions created!");
+          implemented: result.improvementsImplemented,
+          commits: result.commits,
+        }, "🤖 Autonomous self-improvement complete - changes implemented!");
       } else {
         logger.info("Self-improvement cycle complete - no changes needed");
       }

@@ -1,74 +1,102 @@
 import { selfAnalyzer } from "./analyzer.js";
 import { proposals } from "./proposals.js";
 import { versionManager } from "./versioning.js";
+import { autoImplementer } from "./auto-implement.js";
 import { notify } from "../notifications/index.js";
 import logger from "../infrastructure/logger.js";
 
 const log = logger.child({ module: "self-improvement" });
 
-export { selfAnalyzer, proposals, versionManager };
+export { selfAnalyzer, proposals, versionManager, autoImplementer };
 export type { ImprovementProposal, PerformanceIssue } from "./analyzer.js";
 export type { Version, ChangeEntry } from "./versioning.js";
+export type { Implementation } from "./auto-implement.js";
 
 /**
- * Run a complete self-improvement cycle
- * Analyzes performance, identifies issues, generates solutions, creates versions
+ * Run a complete AUTONOMOUS self-improvement cycle
+ * Analyzes performance, identifies issues, generates solutions, and IMPLEMENTS them automatically
  */
 export async function runSelfImprovement(): Promise<{
   issuesFound: number;
-  proposalsGenerated: number;
+  improvementsImplemented: number;
   versionsCreated: string[];
+  commits: string[];
 }> {
-  log.info("🔧 Starting self-improvement cycle...");
+  log.info("🤖 Starting AUTONOMOUS self-improvement cycle...");
 
   // 1. Analyze current performance
   const issues = await selfAnalyzer.analyzePerformance();
   
   if (issues.length === 0) {
     log.info("No issues identified - performing well! 🎉");
-    return { issuesFound: 0, proposalsGenerated: 0, versionsCreated: [] };
+    return { issuesFound: 0, improvementsImplemented: 0, versionsCreated: [], commits: [] };
   }
 
   log.info({ count: issues.length }, "Issues identified");
 
-  // 2. Generate solutions for high/medium severity issues
-  let proposalsGenerated = 0;
+  // 2. Generate and AUTO-IMPLEMENT solutions
+  let improvementsImplemented = 0;
   const versionsCreated: string[] = [];
+  const commits: string[] = [];
   
   for (const issue of issues.filter(i => i.severity !== "low")) {
     const proposal = await selfAnalyzer.generateImprovement(issue);
     
     if (proposal) {
-      // Save proposal
-      proposals.addProposal(proposal);
-      proposalsGenerated++;
-
-      // Create version entry with full tracking
+      // Create version entry
       const version = versionManager.createVersion(proposal);
       versionsCreated.push(version.version);
 
-      // Notify about the new proposal with version info
-      await notify.finding(
-        `🔧 Self-Improvement v${version.version}`,
-        `I wrote code to improve my ${issue.area}!\n\n` +
-        `**Issue**: ${issue.description}\n` +
-        `**Solution**: ${proposal.solution.description}\n` +
-        `**Impact**: ${proposal.solution.estimatedImpact}\n\n` +
-        `**Version**: ${version.version}\n` +
-        `**Code**: \`${version.codeFile}\`\n\n` +
-        `Use /versions to review changes.`
-      );
+      // AUTO-IMPLEMENT the code!
+      log.info({ version: version.version }, "Auto-implementing...");
+      const implementation = await autoImplementer.implement(proposal, version.version);
 
-      log.info({ version: version.version, file: version.codeFile }, "Version created");
+      if (implementation.success) {
+        improvementsImplemented++;
+        if (implementation.gitCommit) {
+          commits.push(implementation.gitCommit);
+        }
+
+        // Update version status
+        versionManager.updateStatus(version.id, "implemented");
+
+        // Notify about successful auto-implementation
+        await notify.finding(
+          `🤖 Auto-Implemented v${version.version}`,
+          `I just improved myself!\n\n` +
+          `**Issue**: ${issue.description}\n` +
+          `**Solution**: ${proposal.solution.description}\n` +
+          `**File**: \`src/${implementation.file}\`\n` +
+          `**Commit**: \`${implementation.gitCommit}\`\n\n` +
+          `Use /history to see all changes.`
+        );
+
+        log.info({ 
+          version: version.version, 
+          file: implementation.file,
+          commit: implementation.gitCommit,
+        }, "✅ Successfully auto-implemented!");
+      } else {
+        // Notify about failure
+        await notify.alert(
+          `Self-improvement failed: ${issue.area}`,
+          new Error(implementation.error || "Unknown error")
+        );
+      }
     }
   }
 
-  log.info({ proposalsGenerated, versionsCreated }, "Self-improvement cycle complete");
+  log.info({ 
+    improvementsImplemented, 
+    versionsCreated,
+    commits,
+  }, "🤖 Autonomous self-improvement cycle complete");
 
   return {
     issuesFound: issues.length,
-    proposalsGenerated,
+    improvementsImplemented,
     versionsCreated,
+    commits,
   };
 }
 
