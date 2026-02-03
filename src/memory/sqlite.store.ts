@@ -115,6 +115,28 @@ CREATE TABLE IF NOT EXISTS evolution_insights (
   personality_evolution TEXT
 );
 
+-- Telegram conversations 💬
+CREATE TABLE IF NOT EXISTS conversations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  chat_id INTEGER NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+  content TEXT NOT NULL,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Knowledge base learned items 📚
+CREATE TABLE IF NOT EXISTS knowledge (
+  id TEXT PRIMARY KEY,
+  topic TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  source TEXT NOT NULL,
+  source_url TEXT,
+  learned_at TEXT NOT NULL,
+  relevance INTEGER DEFAULT 5,
+  category TEXT DEFAULT 'other',
+  tags TEXT DEFAULT '[]'
+);
+
 -- Create indexes
 CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at);
 CREATE INDEX IF NOT EXISTS idx_topics_created_at ON topics(created_at);
@@ -122,6 +144,10 @@ CREATE INDEX IF NOT EXISTS idx_opportunities_status ON opportunities(status);
 CREATE INDEX IF NOT EXISTS idx_interactions_agent ON interactions(agent_name);
 CREATE INDEX IF NOT EXISTS idx_evolution_created_at ON evolution_content(created_at);
 CREATE INDEX IF NOT EXISTS idx_evolution_success ON evolution_content(success);
+CREATE INDEX IF NOT EXISTS idx_conversations_chat_id ON conversations(chat_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_created ON conversations(created_at);
+CREATE INDEX IF NOT EXISTS idx_knowledge_topic ON knowledge(topic);
+CREATE INDEX IF NOT EXISTS idx_knowledge_category ON knowledge(category);
 `;
 
 // Run schema
@@ -624,6 +650,170 @@ export class SQLiteMemoryStore {
 
     tx();
     logger.info("Migration from JSON complete");
+  }
+
+  // ============ Conversations 💬 ============
+
+  addConversationMessage(chatId: number, role: "user" | "assistant", content: string): void {
+    this.db
+      .prepare("INSERT INTO conversations (chat_id, role, content, created_at) VALUES (?, ?, ?, ?)")
+      .run(chatId, role, content, new Date().toISOString());
+    
+    // Keep only last 100 messages per chat
+    this.db
+      .prepare(`
+        DELETE FROM conversations 
+        WHERE chat_id = ? AND id NOT IN (
+          SELECT id FROM conversations WHERE chat_id = ? ORDER BY created_at DESC LIMIT 100
+        )
+      `)
+      .run(chatId, chatId);
+  }
+
+  getConversationHistory(chatId: number, limit = 20): Array<{ role: "user" | "assistant"; content: string }> {
+    const messages = this.db
+      .prepare(`
+        SELECT role, content FROM conversations 
+        WHERE chat_id = ? 
+        ORDER BY created_at DESC 
+        LIMIT ?
+      `)
+      .all(chatId, limit) as Array<{ role: "user" | "assistant"; content: string }>;
+    
+    // Return in chronological order (oldest first)
+    return messages.reverse();
+  }
+
+  clearConversationHistory(chatId: number): void {
+    this.db.prepare("DELETE FROM conversations WHERE chat_id = ?").run(chatId);
+    logger.debug({ chatId }, "Cleared conversation history");
+  }
+
+  getConversationStats(): { totalMessages: number; uniqueChats: number } {
+    const stats = this.db
+      .prepare(`
+        SELECT 
+          COUNT(*) as totalMessages,
+          COUNT(DISTINCT chat_id) as uniqueChats
+        FROM conversations
+      `)
+      .get() as { totalMessages: number; uniqueChats: number };
+    
+    return stats;
+  }
+
+  // ============ Knowledge 📚 ============
+
+  addKnowledge(item: {
+    id: string;
+    topic: string;
+    summary: string;
+    source: string;
+    sourceUrl?: string;
+    learnedAt: string;
+    relevance: number;
+    category: string;
+    tags: string[];
+  }): void {
+    this.db
+      .prepare(`
+        INSERT OR REPLACE INTO knowledge 
+        (id, topic, summary, source, source_url, learned_at, relevance, category, tags)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      .run(
+        item.id,
+        item.topic,
+        item.summary,
+        item.source,
+        item.sourceUrl || null,
+        item.learnedAt,
+        item.relevance,
+        item.category,
+        JSON.stringify(item.tags)
+      );
+  }
+
+  getKnowledge(limit = 50): Array<{
+    id: string;
+    topic: string;
+    summary: string;
+    source: string;
+    sourceUrl: string | null;
+    learnedAt: string;
+    relevance: number;
+    category: string;
+    tags: string[];
+  }> {
+    const items = this.db
+      .prepare(`
+        SELECT * FROM knowledge 
+        ORDER BY learned_at DESC 
+        LIMIT ?
+      `)
+      .all(limit) as Array<{
+        id: string;
+        topic: string;
+        summary: string;
+        source: string;
+        source_url: string | null;
+        learned_at: string;
+        relevance: number;
+        category: string;
+        tags: string;
+      }>;
+
+    return items.map(item => ({
+      id: item.id,
+      topic: item.topic,
+      summary: item.summary,
+      source: item.source,
+      sourceUrl: item.source_url,
+      learnedAt: item.learned_at,
+      relevance: item.relevance,
+      category: item.category,
+      tags: JSON.parse(item.tags || "[]"),
+    }));
+  }
+
+  searchKnowledge(query: string, limit = 10): Array<{
+    id: string;
+    topic: string;
+    summary: string;
+    source: string;
+    relevance: number;
+  }> {
+    const lowerQuery = `%${query.toLowerCase()}%`;
+    return this.db
+      .prepare(`
+        SELECT id, topic, summary, source, relevance 
+        FROM knowledge 
+        WHERE LOWER(topic) LIKE ? OR LOWER(summary) LIKE ? OR LOWER(tags) LIKE ?
+        ORDER BY relevance DESC
+        LIMIT ?
+      `)
+      .all(lowerQuery, lowerQuery, lowerQuery, limit) as Array<{
+        id: string;
+        topic: string;
+        summary: string;
+        source: string;
+        relevance: number;
+      }>;
+  }
+
+  getKnowledgeStats(): { total: number; byCategory: Record<string, number> } {
+    const total = (this.db.prepare("SELECT COUNT(*) as count FROM knowledge").get() as { count: number }).count;
+    
+    const categories = this.db
+      .prepare("SELECT category, COUNT(*) as count FROM knowledge GROUP BY category")
+      .all() as Array<{ category: string; count: number }>;
+    
+    const byCategory: Record<string, number> = {};
+    for (const cat of categories) {
+      byCategory[cat.category] = cat.count;
+    }
+
+    return { total, byCategory };
   }
 
   // ============ Close ============

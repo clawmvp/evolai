@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import { CONFIG } from "../config/index.js";
 import { EVOLAI_PERSONALITY } from "../config/personality.js";
 import { memory } from "../memory/index.js";
+import { sqliteStore } from "../memory/sqlite.store.js";
 import { moltbook } from "../moltbook/client.js";
 import { evolutionAnalyzer } from "../evolution/index.js";
 import { coder } from "../skills/index.js";
@@ -24,7 +25,7 @@ class EvolAITelegramBot {
   private openai: OpenAI | null = null;
   private adminId: string | null = null;
   private isRunning = false;
-  private conversationHistory: ConversationMessage[] = [];
+  private currentChatId: number | null = null;
   private maxHistoryLength = 20;
 
   constructor() {
@@ -142,6 +143,9 @@ Or just chat with me! 💬
 **💰 Wallet (donations):**
 /wallet - My crypto wallet & balances
 /donate - How to support me
+
+**🧠 Memory:**
+/memory - My persistent memory stats
 
 /post <text> - I'll post this to Moltbook
 /clear - Clear chat history
@@ -271,6 +275,10 @@ Or just chat with me! 💬
         await this.showDonateInfo(chatId);
         break;
 
+      case "/memory":
+        await this.showMemory(chatId);
+        break;
+
       case "/status":
         await this.sendStatus(chatId);
         break;
@@ -293,8 +301,8 @@ Or just chat with me! 💬
         break;
 
       case "/clear":
-        this.conversationHistory = [];
-        await this.send(chatId, "Conversation cleared! Fresh start 🧬");
+        sqliteStore.clearConversationHistory(chatId);
+        await this.send(chatId, "Conversation cleared! Fresh start 🧬 (But I still remember everything else!)");
         break;
 
       default:
@@ -317,13 +325,11 @@ Or just chat with me! 💬
         return;
       }
 
-      // Add to history
-      this.conversationHistory.push({ role: "user", content: text });
+      // Add to persistent history
+      sqliteStore.addConversationMessage(chatId, "user", text);
 
-      // Trim history if too long
-      if (this.conversationHistory.length > this.maxHistoryLength) {
-        this.conversationHistory = this.conversationHistory.slice(-this.maxHistoryLength);
-      }
+      // Get conversation history from DB
+      const conversationHistory = sqliteStore.getConversationHistory(chatId, this.maxHistoryLength);
 
       // Get memory context
       const memoryData = memory.get();
@@ -350,7 +356,7 @@ ${memoryContext}
 
 Remember: This is a casual chat, not a formal conversation. Be yourself!`,
         },
-        ...this.conversationHistory.map((m) => ({
+        ...conversationHistory.map((m) => ({
           role: m.role as "user" | "assistant",
           content: m.content,
         })),
@@ -366,8 +372,8 @@ Remember: This is a casual chat, not a formal conversation. Be yourself!`,
 
       const reply = response.choices[0]?.message?.content || "Hmm, I'm not sure what to say...";
 
-      // Add to history
-      this.conversationHistory.push({ role: "assistant", content: reply });
+      // Add to persistent history
+      sqliteStore.addConversationMessage(chatId, "assistant", reply);
 
       // Send reply
       await this.send(chatId, reply);
@@ -879,6 +885,49 @@ Remember: This is a casual chat, not a formal conversation. Be yourself!`,
       log.error({ error }, "Wallet check failed");
       await this.send(chatId, "❌ Failed to check wallet.");
     }
+  }
+
+  private async showMemory(chatId: number): Promise<void> {
+    const mem = memory.get();
+    const convStats = sqliteStore.getConversationStats();
+    const knowledgeStats = sqliteStore.getKnowledgeStats();
+
+    let message = `## 🧠 My Persistent Memory\n\n`;
+
+    message += `**Core Stats:**\n`;
+    message += `• Karma: ${mem.karma}\n`;
+    message += `• Posts: ${mem.totalPosts}\n`;
+    message += `• Comments: ${mem.totalComments}\n`;
+    message += `• Upvotes given: ${mem.totalUpvotesGiven}\n\n`;
+
+    message += `**Conversations:**\n`;
+    message += `• Total messages: ${convStats.totalMessages}\n`;
+    message += `• Unique chats: ${convStats.uniqueChats}\n\n`;
+
+    message += `**Knowledge Base:**\n`;
+    message += `• Total learned: ${knowledgeStats.total} items\n`;
+    if (Object.keys(knowledgeStats.byCategory).length > 0) {
+      for (const [cat, count] of Object.entries(knowledgeStats.byCategory)) {
+        message += `  - ${cat}: ${count}\n`;
+      }
+    }
+    message += `\n`;
+
+    message += `**Relationships:**\n`;
+    message += `• Following: ${mem.following.length} agents\n`;
+    message += `• Interacted with: ${mem.interactedWith.length} agents\n\n`;
+
+    message += `**Evolution:**\n`;
+    message += `• Tracked content: ${mem.evolution?.trackedContent?.length || 0}\n`;
+    message += `• Has insights: ${mem.evolution?.latestInsight ? "Yes ✅" : "Not yet"}\n\n`;
+
+    message += `**Activity:**\n`;
+    message += `• Last heartbeat: ${mem.lastHeartbeat ? new Date(mem.lastHeartbeat).toLocaleString() : "never"}\n`;
+    message += `• Last post: ${mem.lastPost ? new Date(mem.lastPost).toLocaleString() : "never"}\n\n`;
+
+    message += `_All my memories persist across restarts! 🧬_`;
+
+    await this.send(chatId, message);
   }
 
   private async showDonateInfo(chatId: number): Promise<void> {
