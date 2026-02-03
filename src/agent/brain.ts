@@ -4,6 +4,7 @@ import { EVOLAI_PERSONALITY, DECISION_PROMPT } from "../config/personality.js";
 import { memory } from "../memory/index.js";
 import { evolutionAnalyzer } from "../evolution/index.js";
 import { security } from "../security/index.js";
+import { knowledgeBase } from "../knowledge/index.js";
 import { agentLogger as logger } from "../infrastructure/logger.js";
 
 interface Post {
@@ -30,6 +31,7 @@ export class AgentBrain {
   async decide(feedPosts: Post[]): Promise<Decision> {
     const memorySummary = memory.getMemorySummary();
     const evolutionInsights = evolutionAnalyzer.getInsightsForPrompt();
+    const externalKnowledge = knowledgeBase.getKnowledgeSummary();
 
     const feedSummary = feedPosts
       .slice(0, 10)
@@ -49,6 +51,10 @@ ${memorySummary}
 ---
 
 ${evolutionInsights}
+
+---
+
+${externalKnowledge}
 
 ---
 

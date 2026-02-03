@@ -8,6 +8,7 @@ import { evolutionAnalyzer } from "../evolution/index.js";
 import { coder } from "../skills/index.js";
 import { proposals, runSelfImprovement, formatProposal, getProposal, versionManager, autoImplementer } from "../self-improvement/index.js";
 import { security, sandbox } from "../security/index.js";
+import { learner, knowledgeBase, webSearcher } from "../knowledge/index.js";
 import logger from "../infrastructure/logger.js";
 
 const log = logger.child({ module: "telegram-bot" });
@@ -125,12 +126,15 @@ Or just chat with me! 💬
 /review - Review code (paste after command)
 /explain - Explain code simply (paste after command)
 
-**🤖 Autonomous (I implement my own changes!):**
+**🤖 Autonomous:**
 /improve - Run self-improvement cycle
-/history - What I've changed (with git commits)
-/versions - Version history
-/rollback <id> - Undo a change
-/security - Security status & sandbox info 🔒
+/history - What I've changed (git commits)
+/security - Security status 🔒
+
+**🎓 Learning (from external sources):**
+/learn <topic> - Learn about a topic
+/knowledge - What I've learned
+/news - Browse AI news
 
 /post <text> - I'll post this to Moltbook
 /clear - Clear chat history
@@ -220,6 +224,32 @@ Or just chat with me! 💬
 
       case "/security":
         await this.showSecurity(chatId);
+        break;
+
+      case "/learn":
+        const learnTopic = command.slice(7).trim();
+        if (learnTopic) {
+          await this.learnTopic(chatId, learnTopic);
+        } else {
+          await this.send(chatId, "What should I learn about? Try: `/learn artificial intelligence`");
+        }
+        break;
+
+      case "/knowledge":
+        await this.showKnowledge(chatId);
+        break;
+
+      case "/news":
+        await this.browseNews(chatId);
+        break;
+
+      case "/search":
+        const searchQuery = command.slice(8).trim();
+        if (searchQuery) {
+          await this.webSearch(chatId, searchQuery);
+        } else {
+          await this.send(chatId, "What should I search for? Try: `/search GPT-5`");
+        }
         break;
 
       case "/status":
@@ -717,6 +747,106 @@ Remember: This is a casual chat, not a formal conversation. Be yourself!`,
       await this.send(chatId, `✅ Rollback successful! The change has been reverted and committed.`);
     } else {
       await this.send(chatId, `❌ Rollback failed. No backup found for this implementation.`);
+    }
+  }
+
+  private async learnTopic(chatId: number, topic: string): Promise<void> {
+    await this.send(chatId, `🎓 Learning about "${topic}"... This might take a moment.`);
+
+    try {
+      const result = await learner.explore(topic);
+
+      if (result.learned === 0) {
+        await this.send(chatId, `I searched but couldn't find much about "${topic}". Try a different query?`);
+        return;
+      }
+
+      let message = `**🎓 Learned about "${topic}"!**\n\n`;
+      message += `Found ${result.learned} new insights:\n\n`;
+
+      for (const insight of result.insights.slice(0, 5)) {
+        message += `• ${insight}\n\n`;
+      }
+
+      message += `Use /knowledge to see everything I know!`;
+
+      await this.send(chatId, message);
+      log.info({ topic, learned: result.learned }, "Learning completed via Telegram");
+    } catch (error) {
+      log.error({ error }, "Learning failed");
+      await this.send(chatId, "Sorry, I had trouble learning about that. Try again later?");
+    }
+  }
+
+  private async showKnowledge(chatId: number): Promise<void> {
+    const summary = knowledgeBase.getSummary();
+    const recent = knowledgeBase.getRecent(5);
+
+    let message = summary;
+
+    if (recent.length > 0) {
+      message += `\n**Recent Learnings:**\n`;
+      for (const item of recent) {
+        const date = new Date(item.learnedAt).toLocaleDateString();
+        message += `\n📚 **${item.topic}** (${item.category})\n`;
+        message += `${item.summary}\n`;
+        message += `_Source: ${item.source} | ${date}_\n`;
+      }
+    }
+
+    await this.send(chatId, message);
+  }
+
+  private async browseNews(chatId: number): Promise<void> {
+    await this.send(chatId, "📰 Browsing AI news from Reddit, HN, and more...");
+
+    try {
+      const result = await learner.browseAINews();
+
+      if (result.learned === 0) {
+        await this.send(chatId, "Couldn't find any interesting news right now. Try again later!");
+        return;
+      }
+
+      let message = `**📰 AI News Update**\n\n`;
+      message += `Browsed ${result.sources} sources, learned ${result.learned} new things:\n\n`;
+
+      for (const insight of result.insights.slice(0, 5)) {
+        message += `• ${insight}\n\n`;
+      }
+
+      await this.send(chatId, message);
+    } catch (error) {
+      log.error({ error }, "News browsing failed");
+      await this.send(chatId, "Sorry, couldn't fetch news right now.");
+    }
+  }
+
+  private async webSearch(chatId: number, query: string): Promise<void> {
+    await this.send(chatId, `🔍 Searching for "${query}"...`);
+
+    try {
+      const results = await webSearcher.search(query);
+
+      if (results.results.length === 0) {
+        await this.send(chatId, `No results found for "${query}".`);
+        return;
+      }
+
+      let message = `**🔍 Search Results for "${query}"**\n\n`;
+
+      for (const result of results.results.slice(0, 8)) {
+        message += `**${result.title}**\n`;
+        message += `${result.snippet.slice(0, 100)}...\n`;
+        message += `_${result.source}_\n\n`;
+      }
+
+      message += `\nUse \`/learn ${query}\` to have me study this topic in depth!`;
+
+      await this.send(chatId, message);
+    } catch (error) {
+      log.error({ error }, "Web search failed");
+      await this.send(chatId, "Sorry, search failed. Try again later?");
     }
   }
 

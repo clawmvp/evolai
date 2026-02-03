@@ -8,6 +8,7 @@ import { daemonLogger as logger, log } from "./infrastructure/logger.js";
 import { startHealthServer } from "./infrastructure/health.js";
 import { telegramBot } from "./telegram/bot.js";
 import { runSelfImprovement, versionManager } from "./self-improvement/index.js";
+import { learner } from "./knowledge/index.js";
 
 async function main() {
   log.startup("EvolAI Daemon Starting...");
@@ -73,6 +74,26 @@ async function main() {
 
   // Log current version on startup
   logger.info({ version: versionManager.getCurrentVersion() }, "EvolAI version");
+
+  // Learning cycle every 6 hours (at 3:00, 9:00, 15:00, 21:00)
+  cron.schedule("0 3,9,15,21 * * *", async () => {
+    logger.info("🎓 Scheduled learning cycle starting...");
+    
+    try {
+      const result = await learner.runLearningCycle();
+      
+      if (result.totalInsights.length > 0) {
+        logger.info({
+          topic: result.topic,
+          learned: result.newsLearned + result.topicLearned,
+        }, "🎓 Learning cycle complete - new knowledge acquired!");
+      } else {
+        logger.info("Learning cycle complete - no new insights this time");
+      }
+    } catch (error) {
+      logger.error({ error: String(error) }, "Learning cycle failed");
+    }
+  });
 
   // Quick check every hour for opportunities
   cron.schedule("30 * * * *", async () => {
