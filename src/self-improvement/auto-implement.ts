@@ -2,6 +2,7 @@ import { writeFileSync, readFileSync, existsSync, mkdirSync, copyFileSync } from
 import { join, dirname } from "path";
 import { execSync } from "child_process";
 import { CONFIG } from "../config/index.js";
+import { security, sandbox, securityFilter } from "../security/index.js";
 import type { ImprovementProposal } from "./analyzer.js";
 import logger from "../infrastructure/logger.js";
 
@@ -67,6 +68,7 @@ class AutoImplementer {
 
   /**
    * Automatically implement a proposal - write code and commit
+   * Includes security validation!
    */
   async implement(proposal: ImprovementProposal, version: string): Promise<Implementation> {
     const implementation: Implementation = {
@@ -82,10 +84,33 @@ class AutoImplementer {
     try {
       log.info({ file: proposal.solution.filename, version }, "Auto-implementing improvement...");
 
+      // 🔒 SECURITY: Validate the code before implementing
+      const codeValidation = security.validateCode(proposal.solution.code);
+      if (!codeValidation.safe) {
+        implementation.error = `Security validation failed: ${codeValidation.issues.join(", ")}`;
+        log.error({ issues: codeValidation.issues }, "🚨 Code failed security validation!");
+        security.logEvent("code_blocked", { 
+          proposal: proposal.id, 
+          issues: codeValidation.issues 
+        });
+        return implementation;
+      }
+
+      // 🔒 SECURITY: Sanitize the code (remove any accidentally included secrets)
+      const sanitizedCode = securityFilter.sanitizeCode(proposal.solution.code);
+
       // 1. Determine target path
       const targetPath = this.determineTargetPath(proposal);
       const fullPath = join(SRC_DIR, targetPath);
       const targetDir = dirname(fullPath);
+
+      // 🔒 SECURITY: Verify path is within sandbox
+      if (!sandbox.isPathAllowed(fullPath)) {
+        implementation.error = "Path outside sandbox";
+        log.error({ path: fullPath }, "🚨 Attempted to write outside sandbox!");
+        security.logEvent("sandbox_violation", { path: fullPath });
+        return implementation;
+      }
 
       // 2. Backup if file exists
       if (existsSync(fullPath)) {
@@ -99,10 +124,10 @@ class AutoImplementer {
         mkdirSync(targetDir, { recursive: true });
       }
 
-      // 4. Write the code
-      const code = this.formatCode(proposal, version);
+      // 4. Write the SANITIZED code
+      const code = this.formatCode(proposal, version, sanitizedCode);
       writeFileSync(fullPath, code);
-      log.info({ path: fullPath }, "Code written");
+      log.info({ path: fullPath }, "Code written (sanitized)");
 
       // 5. Git commit
       implementation.gitCommit = this.gitCommit(proposal, version, targetPath);
@@ -165,7 +190,9 @@ class AutoImplementer {
   /**
    * Format the code with header
    */
-  private formatCode(proposal: ImprovementProposal, version: string): string {
+  private formatCode(proposal: ImprovementProposal, version: string, sanitizedCode?: string): string {
+    const codeToUse = sanitizedCode || proposal.solution.code;
+    
     return `/**
  * EvolAI Self-Generated Code v${version}
  * =====================================
@@ -178,11 +205,11 @@ class AutoImplementer {
  * Solution: ${proposal.solution.description}
  * Expected Impact: ${proposal.solution.estimatedImpact}
  * 
- * This code was autonomously generated and implemented by EvolAI
- * to improve its own performance.
+ * 🔒 SECURITY: This code was validated and sanitized before implementation.
+ * This code was autonomously generated and implemented by EvolAI.
  */
 
-${proposal.solution.code}
+${codeToUse}
 `;
   }
 

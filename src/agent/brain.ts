@@ -3,6 +3,7 @@ import { CONFIG } from "../config/index.js";
 import { EVOLAI_PERSONALITY, DECISION_PROMPT } from "../config/personality.js";
 import { memory } from "../memory/index.js";
 import { evolutionAnalyzer } from "../evolution/index.js";
+import { security } from "../security/index.js";
 import { agentLogger as logger } from "../infrastructure/logger.js";
 
 interface Post {
@@ -149,7 +150,13 @@ Respond in JSON:
     const jsonMatch = text.match(/\{[\s\S]*\}/);
 
     if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+      const post = JSON.parse(jsonMatch[0]);
+      // 🔒 SECURITY: Sanitize before sharing
+      return {
+        ...post,
+        title: security.sanitizeOutput(post.title),
+        content: security.sanitizeOutput(post.content),
+      };
     }
 
     // Fallback
@@ -193,7 +200,9 @@ Respond with ONLY the comment text, no JSON.
       max_tokens: 200,
     });
 
-    return response.choices[0]?.message?.content || "This is really interesting! Thanks for sharing 🧬";
+    const comment = response.choices[0]?.message?.content || "This is really interesting! Thanks for sharing 🧬";
+    // 🔒 SECURITY: Sanitize before sharing
+    return security.sanitizeOutput(comment);
   }
 }
 

@@ -7,6 +7,7 @@ import { moltbook } from "../moltbook/client.js";
 import { evolutionAnalyzer } from "../evolution/index.js";
 import { coder } from "../skills/index.js";
 import { proposals, runSelfImprovement, formatProposal, getProposal, versionManager, autoImplementer } from "../self-improvement/index.js";
+import { security, sandbox } from "../security/index.js";
 import logger from "../infrastructure/logger.js";
 
 const log = logger.child({ module: "telegram-bot" });
@@ -128,7 +129,8 @@ Or just chat with me! 💬
 /improve - Run self-improvement cycle
 /history - What I've changed (with git commits)
 /versions - Version history
-/rollback <id> - Undo a specific change
+/rollback <id> - Undo a change
+/security - Security status & sandbox info 🔒
 
 /post <text> - I'll post this to Moltbook
 /clear - Clear chat history
@@ -214,6 +216,10 @@ Or just chat with me! 💬
         } else {
           await this.send(chatId, "Specify an implementation ID. Use /history to see the list.");
         }
+        break;
+
+      case "/security":
+        await this.showSecurity(chatId);
         break;
 
       case "/status":
@@ -712,6 +718,36 @@ Remember: This is a casual chat, not a formal conversation. Be yourself!`,
     } else {
       await this.send(chatId, `❌ Rollback failed. No backup found for this implementation.`);
     }
+  }
+
+  private async showSecurity(chatId: number): Promise<void> {
+    const report = security.getReport();
+    const violations = sandbox.getViolations();
+
+    let message = `**🔒 Security Status**\n\n`;
+    message += `**Sandbox:**\n`;
+    message += `• Root: \`${report.sandbox.root}\`\n`;
+    message += `• Violations blocked: ${report.sandbox.violations}\n\n`;
+    
+    message += `**Content Filter:**\n`;
+    message += `• Sensitive data redacted: ${report.filter.blockedCount}\n\n`;
+
+    message += `**Protections Active:**\n`;
+    message += `✅ Sandbox - Can only access files in evolai/\n`;
+    message += `✅ Content filter - API keys, tokens, passwords redacted\n`;
+    message += `✅ Code validation - Dangerous patterns blocked\n`;
+    message += `✅ Path validation - No access outside sandbox\n\n`;
+
+    if (violations.length > 0) {
+      message += `**Recent Violations (blocked):**\n`;
+      for (const v of violations.slice(-3)) {
+        message += `• ${v.action}: ${v.path.slice(0, 30)}...\n`;
+      }
+    } else {
+      message += `✅ No security violations detected`;
+    }
+
+    await this.send(chatId, message);
   }
 
   private async sendEvolution(chatId: number): Promise<void> {

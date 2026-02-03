@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { CONFIG } from "../config/index.js";
+import { security } from "../security/index.js";
 import logger from "../infrastructure/logger.js";
 
 const log = logger.child({ module: "coder" });
@@ -69,7 +70,10 @@ Respond in JSON:
 
       if (jsonMatch) {
         const result = JSON.parse(jsonMatch[0]) as CodeResult;
-        log.info({ language: result.language, lines: result.code.split("\n").length }, "Code generated!");
+        // 🔒 SECURITY: Sanitize code before returning
+        result.code = security.sanitizeCode(result.code);
+        result.explanation = security.sanitizeOutput(result.explanation);
+        log.info({ language: result.language, lines: result.code.split("\n").length }, "Code generated (sanitized)!");
         return result;
       }
 
