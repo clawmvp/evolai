@@ -6,6 +6,7 @@ import { evolai } from "./agent/index.js";
 import { notify } from "./notifications/index.js";
 import { daemonLogger as logger, log } from "./infrastructure/logger.js";
 import { startHealthServer } from "./infrastructure/health.js";
+import { telegramBot } from "./telegram/bot.js";
 
 async function main() {
   log.startup("EvolAI Daemon Starting...");
@@ -16,6 +17,11 @@ async function main() {
 
   // Start health check server
   startHealthServer();
+
+  // Start Telegram chat bot
+  if (telegramBot.isEnabled()) {
+    logger.info("Telegram chat bot is running - you can now talk to EvolAI! 💬");
+  }
 
   const initialized = await evolai.initialize();
   if (!initialized) {

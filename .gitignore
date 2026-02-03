@@ -9,6 +9,9 @@ dist/
 
 # Data (contains API keys in memory)
 data/memory.json
+data/*.db
+data/*.db-shm
+data/*.db-wal
 
 # Logs
 *.log
