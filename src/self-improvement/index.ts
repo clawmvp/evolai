@@ -2,34 +2,80 @@ import { selfAnalyzer } from "./analyzer.js";
 import { proposals } from "./proposals.js";
 import { versionManager } from "./versioning.js";
 import { autoImplementer } from "./auto-implement.js";
+import { selfUpdater } from "./self-update.js";
+import { hotPatcher } from "./hot-patch.js";
 import { notify } from "../notifications/index.js";
 import logger from "../infrastructure/logger.js";
 
 const log = logger.child({ module: "self-improvement" });
 
-export { selfAnalyzer, proposals, versionManager, autoImplementer };
+export { selfAnalyzer, proposals, versionManager, autoImplementer, selfUpdater, hotPatcher };
 export type { ImprovementProposal, PerformanceIssue } from "./analyzer.js";
 export type { Version, ChangeEntry } from "./versioning.js";
 export type { Implementation } from "./auto-implement.js";
+export type { UpdateResult } from "./self-update.js";
+export type { Patch } from "./hot-patch.js";
 
 /**
  * Run a complete AUTONOMOUS self-improvement cycle
- * Analyzes performance, identifies issues, generates solutions, and IMPLEMENTS them automatically
+ * 1. Check for external updates (git pull)
+ * 2. Apply any pending hot patches
+ * 3. Analyze performance, identify issues, generate solutions, and IMPLEMENT them
  */
 export async function runSelfImprovement(): Promise<{
   issuesFound: number;
   improvementsImplemented: number;
   versionsCreated: string[];
   commits: string[];
+  externalUpdates: boolean;
+  patchesApplied: number;
 }> {
   log.info("🤖 Starting AUTONOMOUS self-improvement cycle...");
+
+  // 0. Check for external updates first
+  log.info("📥 Checking for external updates...");
+  const updateCheck = await selfUpdater.checkForUpdates();
+  let externalUpdates = false;
+
+  if (updateCheck.hasUpdates) {
+    log.info({ behind: updateCheck.behind }, "External updates found, pulling...");
+    const updateResult = await selfUpdater.pullAndRebuild();
+    externalUpdates = updateResult.updated;
+
+    if (updateResult.updated && updateResult.changes.some(f => f.startsWith("src/"))) {
+      // Need to restart for source changes
+      log.info("Source changes detected, scheduling restart...");
+      await selfUpdater.restart();
+      return {
+        issuesFound: 0,
+        improvementsImplemented: 0,
+        versionsCreated: [],
+        commits: [],
+        externalUpdates: true,
+        patchesApplied: 0,
+      };
+    }
+  }
+
+  // 0.5 Apply any pending hot patches
+  const patchResult = await hotPatcher.applyAll();
+  if (patchResult.applied > 0) {
+    log.info({ applied: patchResult.applied }, "Hot patches applied");
+  }
 
   // 1. Analyze current performance
   const issues = await selfAnalyzer.analyzePerformance();
   
   if (issues.length === 0) {
     log.info("No issues identified - performing well! 🎉");
-    return { issuesFound: 0, improvementsImplemented: 0, versionsCreated: [], commits: [] };
+    return { 
+      issuesFound: 0, 
+      improvementsImplemented: 0, 
+      versionsCreated: [], 
+      commits: [],
+      externalUpdates,
+      patchesApplied: patchResult.applied,
+    };
   }
 
   log.info({ count: issues.length }, "Issues identified");
@@ -90,6 +136,8 @@ export async function runSelfImprovement(): Promise<{
     improvementsImplemented, 
     versionsCreated,
     commits,
+    externalUpdates,
+    patchesApplied: patchResult.applied,
   }, "🤖 Autonomous self-improvement cycle complete");
 
   return {
@@ -97,6 +145,8 @@ export async function runSelfImprovement(): Promise<{
     improvementsImplemented,
     versionsCreated,
     commits,
+    externalUpdates,
+    patchesApplied: patchResult.applied,
   };
 }
 

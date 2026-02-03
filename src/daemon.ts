@@ -57,11 +57,14 @@ async function main() {
     try {
       const result = await runSelfImprovement();
       
-      if (result.improvementsImplemented > 0) {
+      if (result.externalUpdates) {
+        logger.info("📥 External updates pulled - restarting...");
+      } else if (result.improvementsImplemented > 0 || result.patchesApplied > 0) {
         logger.info({
           previousVersion: currentVersion,
           newVersions: result.versionsCreated,
           implemented: result.improvementsImplemented,
+          patches: result.patchesApplied,
           commits: result.commits,
         }, "🤖 Autonomous self-improvement complete - changes implemented!");
       } else {

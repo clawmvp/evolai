@@ -6,7 +6,7 @@ import { memory } from "../memory/index.js";
 import { moltbook } from "../moltbook/client.js";
 import { evolutionAnalyzer } from "../evolution/index.js";
 import { coder } from "../skills/index.js";
-import { proposals, runSelfImprovement, formatProposal, getProposal, versionManager, autoImplementer } from "../self-improvement/index.js";
+import { proposals, runSelfImprovement, formatProposal, getProposal, versionManager, autoImplementer, selfUpdater, hotPatcher } from "../self-improvement/index.js";
 import { security, sandbox } from "../security/index.js";
 import { learner, knowledgeBase, webSearcher } from "../knowledge/index.js";
 import logger from "../infrastructure/logger.js";
@@ -101,6 +101,7 @@ I'm your friendly AI agent living on Moltbook. You can chat with me about anythi
 
 **🤖 Autonomous Self-Improvement:**
 /improve - Run self-improvement (auto-implements!)
+/update - Check & pull updates from GitHub 📥
 /history - See what I've changed 📋
 /versions - Version history
 /rollback <id> - Undo a change
@@ -128,6 +129,7 @@ Or just chat with me! 💬
 
 **🤖 Autonomous:**
 /improve - Run self-improvement cycle
+/update - Check & pull updates from GitHub
 /history - What I've changed (git commits)
 /security - Security status 🔒
 
@@ -224,6 +226,10 @@ Or just chat with me! 💬
 
       case "/security":
         await this.showSecurity(chatId);
+        break;
+
+      case "/update":
+        await this.checkAndUpdate(chatId);
         break;
 
       case "/learn":
@@ -847,6 +853,59 @@ Remember: This is a casual chat, not a formal conversation. Be yourself!`,
     } catch (error) {
       log.error({ error }, "Web search failed");
       await this.send(chatId, "Sorry, search failed. Try again later?");
+    }
+  }
+
+  private async checkAndUpdate(chatId: number): Promise<void> {
+    await this.send(chatId, "🔍 Checking for updates on GitHub...");
+
+    try {
+      // Check for updates
+      const check = await selfUpdater.checkForUpdates();
+
+      if (!check.hasUpdates) {
+        await this.send(chatId, "✅ Already up to date! No updates available.");
+        return;
+      }
+
+      // Show what's available
+      let message = `📥 **Updates Available!**\n\n`;
+      message += `Behind by: ${check.behind} commits\n\n`;
+      message += `**Pending Updates:**\n`;
+      for (const commit of check.commits.slice(0, 5)) {
+        message += `• ${commit}\n`;
+      }
+      message += `\nPulling and rebuilding...`;
+
+      await this.send(chatId, message);
+
+      // Pull and rebuild
+      const result = await selfUpdater.pullAndRebuild();
+
+      if (!result.updated) {
+        await this.send(chatId, `❌ Update failed: ${result.error}`);
+        return;
+      }
+
+      let successMessage = `✅ **Update Successful!**\n\n`;
+      successMessage += `Version: ${result.previousVersion} → ${result.newVersion}\n`;
+      successMessage += `Changed files: ${result.changes.length}\n\n`;
+
+      if (result.changes.length > 0) {
+        successMessage += `**Changed:**\n`;
+        for (const file of result.changes.slice(0, 10)) {
+          successMessage += `• \`${file}\`\n`;
+        }
+      }
+
+      if (result.restarted) {
+        successMessage += `\n🔄 Restarting to apply source changes...`;
+      }
+
+      await this.send(chatId, successMessage);
+    } catch (error) {
+      log.error({ error }, "Update check failed");
+      await this.send(chatId, "❌ Failed to check for updates.");
     }
   }
 
