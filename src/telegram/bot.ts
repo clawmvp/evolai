@@ -6,7 +6,7 @@ import { memory } from "../memory/index.js";
 import { moltbook } from "../moltbook/client.js";
 import { evolutionAnalyzer } from "../evolution/index.js";
 import { coder } from "../skills/index.js";
-import { proposals, runSelfImprovement, formatProposal, getProposal } from "../self-improvement/index.js";
+import { proposals, runSelfImprovement, formatProposal, getProposal, versionManager } from "../self-improvement/index.js";
 import logger from "../infrastructure/logger.js";
 
 const log = logger.child({ module: "telegram-bot" });
@@ -100,7 +100,8 @@ I'm your friendly AI agent living on Moltbook. You can chat with me about anythi
 **🔧 Self-Improvement:**
 /improve - Analyze myself and generate improvements
 /proposals - See my improvement proposals
-/proposal <id> - View a specific proposal
+/versions - Version history & changelog 📋
+/version <v> - View specific version details
 
 /post <text> - Post to Moltbook
 /clear - Clear chat history
@@ -126,7 +127,8 @@ Or just chat with me! 💬
 **🔧 Self-Improvement:**
 /improve - Analyze and generate self-improvements
 /proposals - See pending improvements
-/proposal <id> - View specific proposal details
+/versions - Version history & changelog 📋
+/version <v> - View specific version
 
 /post <text> - I'll post this to Moltbook
 /clear - Clear chat history
@@ -182,6 +184,23 @@ Or just chat with me! 💬
         } else {
           await this.send(chatId, "Specify a proposal ID. Use /proposals to see the list.");
         }
+        break;
+
+      case "/versions":
+        await this.showVersions(chatId);
+        break;
+
+      case "/version":
+        const versionNum = command.slice(9).trim();
+        if (versionNum) {
+          await this.showVersion(chatId, versionNum);
+        } else {
+          await this.send(chatId, "Specify a version. Use /versions to see the list.");
+        }
+        break;
+
+      case "/changelog":
+        await this.showChangelog(chatId);
         break;
 
       case "/status":
@@ -563,6 +582,77 @@ Remember: This is a casual chat, not a formal conversation. Be yourself!`,
     }
 
     await this.send(chatId, formatProposal(proposal));
+  }
+
+  private async showVersions(chatId: number): Promise<void> {
+    const summary = versionManager.getSummary();
+    const recent = versionManager.getRecent(5);
+
+    let message = summary + "\n";
+
+    if (recent.length > 0) {
+      message += `**Recent Versions:**\n`;
+      
+      const typeEmoji: Record<string, string> = {
+        feature: "✨",
+        improvement: "🔧",
+        optimization: "⚡",
+        bugfix: "🐛",
+      };
+
+      const statusEmoji: Record<string, string> = {
+        proposed: "📝",
+        approved: "👍",
+        implemented: "✅",
+        reverted: "↩️",
+      };
+
+      for (const v of recent) {
+        message += `\n${typeEmoji[v.type] || "📦"} **v${v.version}** ${statusEmoji[v.status]}\n`;
+        message += `   ${v.summary.slice(0, 50)}${v.summary.length > 50 ? "..." : ""}\n`;
+        message += `   _${new Date(v.createdAt).toLocaleDateString()}_\n`;
+      }
+
+      message += `\nUse /version <number> for details`;
+      message += `\nUse /changelog for full history`;
+    } else {
+      message += `\nNo versions yet. Use /improve to start!`;
+    }
+
+    await this.send(chatId, message);
+  }
+
+  private async showVersion(chatId: number, versionNum: string): Promise<void> {
+    // Clean up version number
+    const cleanVersion = versionNum.replace(/^v/, "");
+    
+    const versions = versionManager.getRecent(100);
+    const version = versions.find(v => 
+      v.version === cleanVersion || 
+      v.version.startsWith(cleanVersion) ||
+      v.id.includes(versionNum)
+    );
+
+    if (!version) {
+      await this.send(chatId, `Version "${versionNum}" not found. Use /versions to see the list.`);
+      return;
+    }
+
+    await this.send(chatId, versionManager.formatVersion(version));
+  }
+
+  private async showChangelog(chatId: number): Promise<void> {
+    const changelog = versionManager.getChangelog();
+    
+    // Truncate if too long for Telegram
+    const maxLength = 3500;
+    let message = changelog;
+    
+    if (message.length > maxLength) {
+      message = message.slice(0, maxLength) + "\n\n... (truncated)\n\nFull changelog at: `data/versions/CHANGELOG.md`";
+    }
+
+    await this.send(chatId, message);
   }
 
   private async sendEvolution(chatId: number): Promise<void> {

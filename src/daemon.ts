@@ -7,6 +7,7 @@ import { notify } from "./notifications/index.js";
 import { daemonLogger as logger, log } from "./infrastructure/logger.js";
 import { startHealthServer } from "./infrastructure/health.js";
 import { telegramBot } from "./telegram/bot.js";
+import { runSelfImprovement, versionManager } from "./self-improvement/index.js";
 
 async function main() {
   log.startup("EvolAI Daemon Starting...");
@@ -47,11 +48,35 @@ async function main() {
     await evolai.runHeartbeat();
   });
 
-  // Also run a quick check every hour to look for opportunities
+  // Self-improvement cycle every 12 hours (at 6:00 and 18:00)
+  cron.schedule("0 6,18 * * *", async () => {
+    logger.info("🔧 Scheduled self-improvement cycle starting...");
+    const currentVersion = versionManager.getCurrentVersion();
+    
+    try {
+      const result = await runSelfImprovement();
+      
+      if (result.versionsCreated.length > 0) {
+        logger.info({
+          previousVersion: currentVersion,
+          newVersions: result.versionsCreated,
+          proposals: result.proposalsGenerated,
+        }, "Self-improvement complete - new versions created!");
+      } else {
+        logger.info("Self-improvement cycle complete - no changes needed");
+      }
+    } catch (error) {
+      logger.error({ error: String(error) }, "Self-improvement cycle failed");
+    }
+  });
+
+  // Log current version on startup
+  logger.info({ version: versionManager.getCurrentVersion() }, "EvolAI version");
+
+  // Quick check every hour for opportunities
   cron.schedule("30 * * * *", async () => {
     logger.debug("Quick opportunity scan...");
-    // Just check for @mentions or DMs in the future
-    // For now, this is a placeholder
+    // Placeholder for future checks
   });
 
   // Keep the process alive with graceful shutdown

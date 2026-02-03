@@ -1,20 +1,23 @@
 import { selfAnalyzer } from "./analyzer.js";
 import { proposals } from "./proposals.js";
+import { versionManager } from "./versioning.js";
 import { notify } from "../notifications/index.js";
 import logger from "../infrastructure/logger.js";
 
 const log = logger.child({ module: "self-improvement" });
 
-export { selfAnalyzer, proposals };
+export { selfAnalyzer, proposals, versionManager };
 export type { ImprovementProposal, PerformanceIssue } from "./analyzer.js";
+export type { Version, ChangeEntry } from "./versioning.js";
 
 /**
  * Run a complete self-improvement cycle
- * Analyzes performance, identifies issues, generates solutions
+ * Analyzes performance, identifies issues, generates solutions, creates versions
  */
 export async function runSelfImprovement(): Promise<{
   issuesFound: number;
   proposalsGenerated: number;
+  versionsCreated: string[];
 }> {
   log.info("🔧 Starting self-improvement cycle...");
 
@@ -23,38 +26,49 @@ export async function runSelfImprovement(): Promise<{
   
   if (issues.length === 0) {
     log.info("No issues identified - performing well! 🎉");
-    return { issuesFound: 0, proposalsGenerated: 0 };
+    return { issuesFound: 0, proposalsGenerated: 0, versionsCreated: [] };
   }
 
   log.info({ count: issues.length }, "Issues identified");
 
   // 2. Generate solutions for high/medium severity issues
   let proposalsGenerated = 0;
+  const versionsCreated: string[] = [];
   
   for (const issue of issues.filter(i => i.severity !== "low")) {
     const proposal = await selfAnalyzer.generateImprovement(issue);
     
     if (proposal) {
+      // Save proposal
       proposals.addProposal(proposal);
       proposalsGenerated++;
 
-      // Notify about the new proposal
+      // Create version entry with full tracking
+      const version = versionManager.createVersion(proposal);
+      versionsCreated.push(version.version);
+
+      // Notify about the new proposal with version info
       await notify.finding(
-        "🔧 New Self-Improvement Proposal",
-        `I found a way to improve my ${issue.area}!\n\n` +
-        `Issue: ${issue.description}\n` +
-        `Solution: ${proposal.solution.description}\n` +
-        `Impact: ${proposal.solution.estimatedImpact}\n\n` +
-        `Use /proposals to see details.`
+        `🔧 Self-Improvement v${version.version}`,
+        `I wrote code to improve my ${issue.area}!\n\n` +
+        `**Issue**: ${issue.description}\n` +
+        `**Solution**: ${proposal.solution.description}\n` +
+        `**Impact**: ${proposal.solution.estimatedImpact}\n\n` +
+        `**Version**: ${version.version}\n` +
+        `**Code**: \`${version.codeFile}\`\n\n` +
+        `Use /versions to review changes.`
       );
+
+      log.info({ version: version.version, file: version.codeFile }, "Version created");
     }
   }
 
-  log.info({ proposalsGenerated }, "Self-improvement cycle complete");
+  log.info({ proposalsGenerated, versionsCreated }, "Self-improvement cycle complete");
 
   return {
     issuesFound: issues.length,
     proposalsGenerated,
+    versionsCreated,
   };
 }
 
