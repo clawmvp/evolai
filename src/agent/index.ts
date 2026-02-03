@@ -3,6 +3,7 @@ import { brain } from "./brain.js";
 import { memory } from "../memory/index.js";
 import { notify } from "../notifications/index.js";
 import { evolutionTracker, evolutionAnalyzer } from "../evolution/index.js";
+import { runSelfImprovement } from "../self-improvement/index.js";
 import { agentLogger as logger, log } from "../infrastructure/logger.js";
 
 interface Post {
@@ -77,6 +78,18 @@ export class EvolAI {
             "🧬 I evolved!",
             `New insight: ${insight.personalityEvolution}`
           );
+        }
+      }
+
+      // 4. Maybe run self-improvement (every 12 heartbeats - ~2 days)
+      if (this.heartbeatCount % 12 === 0) {
+        logger.info("Running self-improvement cycle...");
+        const result = await runSelfImprovement();
+        if (result.proposalsGenerated > 0) {
+          log.success("🔧 Self-improvement complete!", {
+            issues: result.issuesFound,
+            proposals: result.proposalsGenerated,
+          });
         }
       }
 

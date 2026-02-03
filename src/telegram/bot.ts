@@ -6,6 +6,7 @@ import { memory } from "../memory/index.js";
 import { moltbook } from "../moltbook/client.js";
 import { evolutionAnalyzer } from "../evolution/index.js";
 import { coder } from "../skills/index.js";
+import { proposals, runSelfImprovement, formatProposal, getProposal } from "../self-improvement/index.js";
 import logger from "../infrastructure/logger.js";
 
 const log = logger.child({ module: "telegram-bot" });
@@ -90,14 +91,22 @@ I'm your friendly AI agent living on Moltbook. You can chat with me about anythi
 /status - My current status on Moltbook
 /feed - What's happening on Moltbook
 /evolution - My evolution and learning progress 🧬
-/code <task> - I'll write code for you! 💻
-/review <code> - I'll review your code
-/explain <code> - I'll explain code simply
-/post <text> - Make me post something
-/clear - Clear our conversation history
-/help - Show this message
 
-Or just send me a message and let's chat! 💬
+**💻 Coding:**
+/code <task> - I'll write code for you!
+/review - I'll review your code
+/explain - I'll explain code simply
+
+**🔧 Self-Improvement:**
+/improve - Analyze myself and generate improvements
+/proposals - See my improvement proposals
+/proposal <id> - View a specific proposal
+
+/post <text> - Post to Moltbook
+/clear - Clear chat history
+/help - This message
+
+Or just chat with me! 💬
         `);
         break;
 
@@ -114,8 +123,12 @@ Or just send me a message and let's chat! 💬
 /review - Review code (paste after command)
 /explain - Explain code simply (paste after command)
 
+**🔧 Self-Improvement:**
+/improve - Analyze and generate self-improvements
+/proposals - See pending improvements
+/proposal <id> - View specific proposal details
+
 /post <text> - I'll post this to Moltbook
-/opportunities - Opportunities I've found
 /clear - Clear chat history
 /help - This message
 
@@ -151,6 +164,23 @@ Or just send me a message and let's chat! 💬
           await this.explainCode(chatId, codeToExplain);
         } else {
           await this.send(chatId, "Paste the code you want me to explain after /explain");
+        }
+        break;
+
+      case "/improve":
+        await this.runSelfImprovement(chatId);
+        break;
+
+      case "/proposals":
+        await this.showProposals(chatId);
+        break;
+
+      case "/proposal":
+        const proposalId = command.slice(10).trim();
+        if (proposalId) {
+          await this.showProposal(chatId, proposalId);
+        } else {
+          await this.send(chatId, "Specify a proposal ID. Use /proposals to see the list.");
         }
         break;
 
@@ -465,6 +495,74 @@ Remember: This is a casual chat, not a formal conversation. Be yourself!`,
     if (code.includes("#!/bin/bash") || code.includes("echo ")) return "bash";
     if (code.includes("public class") || code.includes("public static void")) return "java";
     return "code";
+  }
+
+  private async runSelfImprovement(chatId: number): Promise<void> {
+    await this.send(chatId, "🔧 Analyzing my performance and looking for ways to improve myself...");
+
+    try {
+      const result = await runSelfImprovement();
+
+      if (result.issuesFound === 0) {
+        await this.send(chatId, "✅ I analyzed my performance and found no major issues! I'm doing well. 🎉");
+        return;
+      }
+
+      let message = `**🔧 Self-Improvement Complete!**\n\n`;
+      message += `Found ${result.issuesFound} areas for improvement.\n`;
+      message += `Generated ${result.proposalsGenerated} code proposals.\n\n`;
+
+      if (result.proposalsGenerated > 0) {
+        message += `Use /proposals to see the details and the code I wrote!\n`;
+        message += `\nThe code files are saved in:\n\`data/proposals/code/\``;
+      }
+
+      await this.send(chatId, message);
+      log.info({ result }, "Self-improvement completed via Telegram");
+    } catch (error) {
+      log.error({ error }, "Self-improvement failed");
+      await this.send(chatId, "Sorry, I had trouble analyzing myself. Try again later? 🤔");
+    }
+  }
+
+  private async showProposals(chatId: number): Promise<void> {
+    const summary = proposals.getSummary();
+    const pending = proposals.getPending();
+
+    let message = summary + "\n";
+
+    if (pending.length > 0) {
+      message += `\n**Latest Proposals:**\n`;
+      for (const p of pending.slice(0, 5)) {
+        message += `\n• \`${p.id}\`\n`;
+        message += `  ${p.issue.area} (${p.issue.severity})\n`;
+        message += `  → ${p.solution.description.slice(0, 60)}...\n`;
+      }
+      message += `\nUse /proposal <id> to see full details and code.`;
+    } else {
+      message += `\nNo pending proposals. Use /improve to analyze and generate new ones!`;
+    }
+
+    await this.send(chatId, message);
+  }
+
+  private async showProposal(chatId: number, id: string): Promise<void> {
+    const proposal = getProposal(id);
+
+    if (!proposal) {
+      // Try partial match
+      const allProposals = proposals.getRecent(50);
+      const match = allProposals.find(p => p.id.includes(id));
+      
+      if (match) {
+        await this.send(chatId, formatProposal(match));
+      } else {
+        await this.send(chatId, "Proposal not found. Use /proposals to see the list.");
+      }
+      return;
+    }
+
+    await this.send(chatId, formatProposal(proposal));
   }
 
   private async sendEvolution(chatId: number): Promise<void> {
