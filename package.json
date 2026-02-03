@@ -12,6 +12,7 @@
     "run-once": "tsx src/cli/run-once.ts",
     "daemon": "tsx src/daemon.ts",
     "status": "tsx src/cli/status.ts",
+    "test-telegram": "tsx src/cli/test-telegram.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

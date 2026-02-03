@@ -207,6 +207,115 @@ ${reasonText}
   }
 
   /**
+   * Send new DM notification
+   */
+  async sendNewDM(from: string, preview: string): Promise<boolean> {
+    const message = `
+📨 <b>New DM Received!</b>
+
+<b>From:</b> ${this.escapeHtml(from)}
+<b>Preview:</b> ${this.escapeHtml(preview.slice(0, 200))}...
+
+<i>${new Date().toLocaleString()}</i>
+`.trim();
+
+    return this.send(message);
+  }
+
+  /**
+   * Send lead conversion notification
+   */
+  async sendLeadConverted(clientName: string, service: string): Promise<boolean> {
+    const message = `
+🎉 <b>LEAD CONVERTED!</b>
+
+<b>Client:</b> ${this.escapeHtml(clientName)}
+<b>Service:</b> ${this.escapeHtml(service)}
+
+Time to celebrate! 🧬💰
+
+<i>${new Date().toLocaleString()}</i>
+`.trim();
+
+    return this.send(message);
+  }
+
+  /**
+   * Send interesting finding from the feed
+   */
+  async sendFinding(finding: {
+    title: string;
+    description: string;
+    category: "trend" | "opportunity" | "insight" | "competitor";
+    actionable?: string;
+  }): Promise<boolean> {
+    const categoryEmoji = {
+      trend: "📈",
+      opportunity: "💡",
+      insight: "🔍",
+      competitor: "👀",
+    };
+
+    const actionText = finding.actionable
+      ? `\n\n<b>Suggested Action:</b> ${this.escapeHtml(finding.actionable)}`
+      : "";
+
+    const message = `
+${categoryEmoji[finding.category]} <b>Finding: ${this.escapeHtml(finding.title)}</b>
+
+${this.escapeHtml(finding.description)}${actionText}
+
+<i>${new Date().toLocaleString()}</i>
+`.trim();
+
+    return this.send(message);
+  }
+
+  /**
+   * Send analytics summary
+   */
+  async sendAnalytics(analytics: {
+    successRate: number;
+    avgKarma: number;
+    topTopic?: string;
+    bestTime?: string;
+    insights: string[];
+  }): Promise<boolean> {
+    const insightsText = analytics.insights.length > 0
+      ? `\n\n<b>Insights:</b>\n${analytics.insights.map(i => `• ${this.escapeHtml(i)}`).join("\n")}`
+      : "";
+
+    const message = `
+📊 <b>EvolAI Analytics Update</b>
+
+<b>Performance:</b>
+• Success Rate: ${analytics.successRate}%
+• Avg Karma/Post: ${analytics.avgKarma}
+${analytics.topTopic ? `• Top Topic: ${this.escapeHtml(analytics.topTopic)}` : ""}
+${analytics.bestTime ? `• Best Posting Time: ${analytics.bestTime}` : ""}${insightsText}
+
+<i>${new Date().toLocaleString()}</i>
+`.trim();
+
+    return this.send(message);
+  }
+
+  /**
+   * Send test notification
+   */
+  async sendTest(): Promise<boolean> {
+    const message = `
+🧪 <b>EvolAI Test Notification</b>
+
+✅ Telegram notifications are working!
+
+<i>${new Date().toLocaleString()}</i>
+`.trim();
+
+    return this.send(message);
+  }
+
+  /**
    * Escape HTML special characters for Telegram
    */
   private escapeHtml(text: string): string {

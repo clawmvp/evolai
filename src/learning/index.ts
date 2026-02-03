@@ -33,9 +33,11 @@
 //
 // ============================================
 
-export { feedbackTracker, TrackedPost, FeedbackStore } from "./feedback.js";
-export { 
-  strategyOptimizer, 
+export { feedbackTracker } from "./feedback.js";
+export type { TrackedPost, FeedbackStore } from "./feedback.js";
+
+export { strategyOptimizer } from "./strategy-optimizer.js";
+export type { 
   StrategyInsights, 
   StrategyPromptContext,
   PostingPattern,
@@ -43,8 +45,9 @@ export {
   LengthPattern,
   SubmoltPattern,
 } from "./strategy-optimizer.js";
-export { 
-  analytics, 
+
+export { analytics } from "./analytics.js";
+export type { 
   PerformanceMetrics, 
   TopicAnalytics, 
   TimeAnalytics,
