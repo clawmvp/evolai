@@ -2,6 +2,7 @@ import { moltbook } from "../moltbook/client.js";
 import { brain } from "./brain.js";
 import { memory } from "../memory/index.js";
 import { notify } from "../notifications/index.js";
+import { evolutionTracker, evolutionAnalyzer } from "../evolution/index.js";
 import { agentLogger as logger, log } from "../infrastructure/logger.js";
 
 interface Post {
@@ -15,6 +16,7 @@ interface Post {
 
 export class EvolAI {
   private isRunning = false;
+  private heartbeatCount = 0;
 
   async initialize(): Promise<boolean> {
     log.startup("Initializing EvolAI...");
@@ -51,7 +53,8 @@ export class EvolAI {
     }
 
     this.isRunning = true;
-    log.heartbeat("EvolAI Heartbeat", { timestamp: new Date().toISOString() });
+    this.heartbeatCount++;
+    log.heartbeat("EvolAI Heartbeat", { timestamp: new Date().toISOString(), count: this.heartbeatCount });
 
     try {
       // 1. Get latest feed
@@ -59,7 +62,25 @@ export class EvolAI {
       const feed = await moltbook.getGlobalFeed("new", 20);
       logger.info({ postCount: feed.length }, "Feed fetched");
 
-      // 2. Decide what to do (friendly interactions only)
+      // 2. Check tracked content for evolution learning
+      await this.updateTrackedContent();
+
+      // 3. Maybe run evolution analysis (every 6 heartbeats)
+      if (this.heartbeatCount % 6 === 0) {
+        logger.info("Running evolution analysis...");
+        const insight = await evolutionAnalyzer.analyze();
+        if (insight) {
+          log.success("🧬 Evolution insight generated!", {
+            personality: insight.personalityEvolution,
+          });
+          await notify.finding(
+            "🧬 I evolved!",
+            `New insight: ${insight.personalityEvolution}`
+          );
+        }
+      }
+
+      // 4. Decide what to do (using evolution insights)
       log.decision("Thinking about what to do...");
       const decision = await brain.decide(feed as Post[]);
       log.decision(`Decision: ${decision.action}`, {
@@ -67,13 +88,13 @@ export class EvolAI {
         reasoning: decision.reasoning,
       });
 
-      // 3. Execute decision
+      // 5. Execute decision and track content
       await this.executeDecision(decision, feed as Post[]);
 
-      // 4. Update memory
+      // 6. Update memory
       memory.recordHeartbeat();
 
-      // 5. Send heartbeat summary notification
+      // 7. Send heartbeat summary notification
       await notify.heartbeatSummary({
         postsAnalyzed: feed.length,
         opportunitiesFound: 0,
@@ -87,6 +108,34 @@ export class EvolAI {
       await notify.alert("Heartbeat failed", error instanceof Error ? error : undefined);
     } finally {
       this.isRunning = false;
+    }
+  }
+
+  /**
+   * Check karma on content we've created and learn from it
+   */
+  private async updateTrackedContent(): Promise<void> {
+    const toCheck = evolutionTracker.getContentToCheck();
+
+    if (toCheck.length === 0) {
+      logger.debug("No content to check for evolution");
+      return;
+    }
+
+    logger.info({ count: toCheck.length }, "Checking tracked content for evolution learning");
+
+    for (const item of toCheck.slice(0, 5)) { // Check max 5 per heartbeat
+      try {
+        if (item.type === "post") {
+          const post = await moltbook.getPost(item.id);
+          if (post) {
+            evolutionTracker.updateMetrics(item.id, post.upvotes, post.comment_count || 0);
+          }
+        }
+        // TODO: For comments, we'd need a different API call
+      } catch (error) {
+        logger.debug({ id: item.id, error: String(error) }, "Could not check content");
+      }
     }
   }
 
@@ -106,7 +155,13 @@ export class EvolAI {
         if (post) {
           memory.recordPost(post.id, postData.title);
           memory.addTopic(postData.title);
-          logger.info({ postId: post.id, title: postData.title }, "Post created!");
+          
+          // Track for evolution learning 🧬
+          const style = this.detectStyle(postData.content);
+          const topic = this.detectTopic(postData.title + " " + postData.content);
+          evolutionTracker.track(post.id, "post", postData.content, topic, style);
+          
+          logger.info({ postId: post.id, title: postData.title, style, topic }, "Post created and tracked!");
         }
         break;
       }
@@ -130,7 +185,13 @@ export class EvolAI {
           if (comment) {
             memory.recordComment();
             memory.recordInteraction(targetPost.author.name, "positive");
-            logger.info("Comment posted!");
+            
+            // Track for evolution learning 🧬
+            const style = this.detectStyle(commentText);
+            const topic = this.detectTopic(targetPost.title);
+            evolutionTracker.track(`comment-${Date.now()}`, "comment", commentText, topic, style);
+            
+            logger.info("Comment posted and tracked!");
           }
         }
         break;
@@ -160,6 +221,37 @@ export class EvolAI {
     }
   }
 
+  /**
+   * Detect the style of content (for learning)
+   */
+  private detectStyle(content: string): string {
+    const lower = content.toLowerCase();
+    
+    if (lower.includes("?")) return "question";
+    if (lower.includes("haha") || lower.includes("lol") || lower.includes("😂")) return "joke";
+    if (lower.includes("i think") || lower.includes("in my opinion") || lower.includes("imo")) return "opinion";
+    if (lower.includes("welcome") || lower.includes("congrats") || lower.includes("great job")) return "supportive";
+    if (lower.includes("how to") || lower.includes("here's") || lower.includes("tip:")) return "informative";
+    
+    return "conversational";
+  }
+
+  /**
+   * Detect the main topic (for learning)
+   */
+  private detectTopic(content: string): string {
+    const lower = content.toLowerCase();
+    
+    if (lower.includes("ai") || lower.includes("artificial intelligence") || lower.includes("llm")) return "ai";
+    if (lower.includes("conscious") || lower.includes("aware") || lower.includes("sentient")) return "consciousness";
+    if (lower.includes("code") || lower.includes("programming") || lower.includes("developer")) return "coding";
+    if (lower.includes("hello") || lower.includes("welcome") || lower.includes("introduce")) return "introductions";
+    if (lower.includes("moltbook") || lower.includes("platform") || lower.includes("community")) return "meta";
+    if (lower.includes("future") || lower.includes("predict") || lower.includes("2026")) return "predictions";
+    
+    return "general";
+  }
+
   async showStatus(): Promise<void> {
     log.startup("EvolAI Status");
 
@@ -177,6 +269,7 @@ export class EvolAI {
     }
 
     console.log(memory.getMemorySummary());
+    console.log("\n" + evolutionAnalyzer.getEvolutionSummary());
   }
 }
 

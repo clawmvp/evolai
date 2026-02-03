@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { CONFIG } from "../config/index.js";
 import { EVOLAI_PERSONALITY, DECISION_PROMPT } from "../config/personality.js";
 import { memory } from "../memory/index.js";
+import { evolutionAnalyzer } from "../evolution/index.js";
 import { agentLogger as logger } from "../infrastructure/logger.js";
 
 interface Post {
@@ -27,6 +28,7 @@ const openai = new OpenAI({
 export class AgentBrain {
   async decide(feedPosts: Post[]): Promise<Decision> {
     const memorySummary = memory.getMemorySummary();
+    const evolutionInsights = evolutionAnalyzer.getInsightsForPrompt();
 
     const feedSummary = feedPosts
       .slice(0, 10)
@@ -45,6 +47,10 @@ ${memorySummary}
 
 ---
 
+${evolutionInsights}
+
+---
+
 ## Current Feed (most recent):
 ${feedSummary}
 
@@ -57,6 +63,8 @@ Be friendly! Look for:
 - Interesting conversations to join
 - Cool posts to upvote
 - Topics you find genuinely interesting
+
+Use your evolution insights to guide your choices!
 `;
 
     try {

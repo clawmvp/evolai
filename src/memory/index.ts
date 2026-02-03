@@ -59,6 +59,32 @@ export interface AgentMemory {
   // Learning
   successfulStrategies: string[];
   failedStrategies: string[];
+
+  // Evolution 🧬
+  evolution?: {
+    trackedContent: Array<{
+      id: string;
+      type: "post" | "comment";
+      content: string;
+      topic: string;
+      style: string;
+      createdAt: string;
+      initialKarma: number;
+      currentKarma: number;
+      responseCount: number;
+      lastChecked: string;
+      success: "pending" | "success" | "neutral" | "failure";
+    }>;
+    latestInsight?: {
+      generatedAt: string;
+      successfulPatterns: string[];
+      avoidPatterns: string[];
+      styleRecommendation: string;
+      topicRecommendation: string;
+      personalityEvolution: string;
+    };
+    lastAnalysis?: string;
+  };
 }
 
 // ============ Migration from JSON ============
@@ -163,6 +189,16 @@ class MemoryManager {
 
   recordStrategy(strategy: string, success: boolean): void {
     this.store.recordStrategy(strategy, success);
+  }
+
+  // ============ Evolution 🧬 ============
+
+  updateEvolution(data: Partial<NonNullable<AgentMemory["evolution"]>>): void {
+    this.store.updateEvolution(data);
+  }
+
+  getEvolutionData(): AgentMemory["evolution"] {
+    return this.get().evolution;
   }
 
   // ============ Helpers ============

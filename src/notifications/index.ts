@@ -77,6 +77,21 @@ class NotificationService {
   }
 
   /**
+   * Send a general finding/update
+   */
+  async finding(title: string, description: string): Promise<void> {
+    console.log(`🧬 Finding: ${title} - ${description}`);
+
+    if (telegram.isEnabled()) {
+      await telegram.sendFinding({
+        title,
+        description,
+        category: "insight",
+      });
+    }
+  }
+
+  /**
    * Check if any notification channel is available
    */
   isEnabled(): boolean {

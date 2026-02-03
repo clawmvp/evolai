@@ -90,11 +90,38 @@ CREATE TABLE IF NOT EXISTS strategies (
   success INTEGER NOT NULL CHECK (success IN (0, 1))
 );
 
+-- Evolution tracking 🧬
+CREATE TABLE IF NOT EXISTS evolution_content (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL CHECK (type IN ('post', 'comment')),
+  content TEXT NOT NULL,
+  topic TEXT NOT NULL,
+  style TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  initial_karma INTEGER DEFAULT 0,
+  current_karma INTEGER DEFAULT 0,
+  response_count INTEGER DEFAULT 0,
+  last_checked TEXT NOT NULL,
+  success TEXT DEFAULT 'pending' CHECK (success IN ('pending', 'success', 'neutral', 'failure'))
+);
+
+CREATE TABLE IF NOT EXISTS evolution_insights (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  generated_at TEXT,
+  successful_patterns TEXT,
+  avoid_patterns TEXT,
+  style_recommendation TEXT,
+  topic_recommendation TEXT,
+  personality_evolution TEXT
+);
+
 -- Create indexes
 CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at);
 CREATE INDEX IF NOT EXISTS idx_topics_created_at ON topics(created_at);
 CREATE INDEX IF NOT EXISTS idx_opportunities_status ON opportunities(status);
 CREATE INDEX IF NOT EXISTS idx_interactions_agent ON interactions(agent_name);
+CREATE INDEX IF NOT EXISTS idx_evolution_created_at ON evolution_content(created_at);
+CREATE INDEX IF NOT EXISTS idx_evolution_success ON evolution_content(success);
 `;
 
 // Run schema
@@ -185,6 +212,7 @@ export class SQLiteMemoryStore {
       interactedWith: interactions,
       successfulStrategies: successStrategies.map((s) => s.strategy),
       failedStrategies: failedStrategies.map((s) => s.strategy),
+      evolution: this.getEvolutionData(),
     };
   }
 
@@ -349,6 +377,112 @@ export class SQLiteMemoryStore {
       .prepare("INSERT OR REPLACE INTO strategies (strategy, success) VALUES (?, ?)")
       .run(strategy, success ? 1 : 0);
     logger.debug({ strategy, success }, "Recorded strategy");
+  }
+
+  // ============ Evolution 🧬 ============
+
+  updateEvolution(data: Partial<NonNullable<AgentMemory["evolution"]>>): void {
+    // Update tracked content
+    if (data.trackedContent && data.trackedContent.length > 0) {
+      const insert = this.db.prepare(`
+        INSERT OR REPLACE INTO evolution_content 
+        (id, type, content, topic, style, created_at, initial_karma, current_karma, response_count, last_checked, success)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      const trackedContent = data.trackedContent;
+      const tx = this.db.transaction(() => {
+        for (const item of trackedContent) {
+          insert.run(
+            item.id,
+            item.type,
+            item.content,
+            item.topic,
+            item.style,
+            item.createdAt,
+            item.initialKarma,
+            item.currentKarma,
+            item.responseCount,
+            item.lastChecked,
+            item.success
+          );
+        }
+      });
+
+      tx();
+      logger.debug({ count: data.trackedContent.length }, "Updated tracked content");
+    }
+
+    // Update insights
+    if (data.latestInsight) {
+      const insight = data.latestInsight;
+      
+      // Ensure row exists
+      this.db
+        .prepare("INSERT OR IGNORE INTO evolution_insights (id) VALUES (1)")
+        .run();
+
+      this.db
+        .prepare(`
+          UPDATE evolution_insights SET
+            generated_at = ?,
+            successful_patterns = ?,
+            avoid_patterns = ?,
+            style_recommendation = ?,
+            topic_recommendation = ?,
+            personality_evolution = ?
+          WHERE id = 1
+        `)
+        .run(
+          insight.generatedAt,
+          JSON.stringify(insight.successfulPatterns),
+          JSON.stringify(insight.avoidPatterns),
+          insight.styleRecommendation,
+          insight.topicRecommendation,
+          insight.personalityEvolution
+        );
+
+      logger.debug("Updated evolution insights");
+    }
+  }
+
+  getEvolutionData(): AgentMemory["evolution"] {
+    const trackedContent = this.db
+      .prepare(`
+        SELECT 
+          id, type, content, topic, style,
+          created_at as createdAt,
+          initial_karma as initialKarma,
+          current_karma as currentKarma,
+          response_count as responseCount,
+          last_checked as lastChecked,
+          success
+        FROM evolution_content
+        ORDER BY created_at DESC
+        LIMIT 100
+      `)
+      .all() as NonNullable<AgentMemory["evolution"]>["trackedContent"];
+
+    const insightRow = this.db
+      .prepare("SELECT * FROM evolution_insights WHERE id = 1")
+      .get() as Record<string, unknown> | undefined;
+
+    let latestInsight: NonNullable<AgentMemory["evolution"]>["latestInsight"] | undefined;
+    if (insightRow && insightRow.generated_at) {
+      latestInsight = {
+        generatedAt: insightRow.generated_at as string,
+        successfulPatterns: JSON.parse((insightRow.successful_patterns as string) || "[]"),
+        avoidPatterns: JSON.parse((insightRow.avoid_patterns as string) || "[]"),
+        styleRecommendation: insightRow.style_recommendation as string,
+        topicRecommendation: insightRow.topic_recommendation as string,
+        personalityEvolution: insightRow.personality_evolution as string,
+      };
+    }
+
+    return {
+      trackedContent,
+      latestInsight,
+    };
   }
 
   // ============ Helpers ============

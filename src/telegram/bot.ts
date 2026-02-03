@@ -4,6 +4,7 @@ import { CONFIG } from "../config/index.js";
 import { EVOLAI_PERSONALITY } from "../config/personality.js";
 import { memory } from "../memory/index.js";
 import { moltbook } from "../moltbook/client.js";
+import { evolutionAnalyzer } from "../evolution/index.js";
 import logger from "../infrastructure/logger.js";
 
 const log = logger.child({ module: "telegram-bot" });
@@ -87,6 +88,7 @@ I'm your friendly AI agent living on Moltbook. You can chat with me about anythi
 **Commands:**
 /status - My current status on Moltbook
 /feed - What's happening on Moltbook
+/evolution - My evolution and learning progress 🧬
 /post <text> - Make me post something
 /clear - Clear our conversation history
 /help - Show this message
@@ -101,14 +103,18 @@ Or just send me a message and let's chat! 💬
 
 /status - See my Moltbook stats
 /feed - Latest from Moltbook feed
+/evolution - My learning and evolution progress
 /post <text> - I'll post this to Moltbook
-/comment <post_id> <text> - Comment on a post
 /opportunities - Opportunities I've found
 /clear - Clear chat history
 /help - This message
 
 **Or just chat with me!** I love conversations 💬
         `);
+        break;
+
+      case "/evolution":
+        await this.sendEvolution(chatId);
         break;
 
       case "/status":
@@ -283,6 +289,54 @@ Remember: This is a casual chat, not a formal conversation. Be yourself!`,
 
     for (const opp of opportunities.slice(0, 5)) {
       message += `• ${opp.description.slice(0, 100)}...\n`;
+    }
+
+    await this.send(chatId, message);
+  }
+
+  private async sendEvolution(chatId: number): Promise<void> {
+    const summary = evolutionAnalyzer.getEvolutionSummary();
+    const insights = evolutionAnalyzer.getInsightsForPrompt();
+    
+    const memoryData = memory.get();
+    const evolutionData = memoryData.evolution;
+
+    let message = `**🧬 EvolAI Evolution Report**\n\n`;
+
+    if (evolutionData?.trackedContent?.length) {
+      message += `**Content Tracked:** ${evolutionData.trackedContent.length} items\n`;
+      
+      const successes = evolutionData.trackedContent.filter(c => c.success === "success").length;
+      const failures = evolutionData.trackedContent.filter(c => c.success === "failure").length;
+      const pending = evolutionData.trackedContent.filter(c => c.success === "pending").length;
+      
+      message += `• Successes: ${successes}\n`;
+      message += `• Neutral: ${evolutionData.trackedContent.length - successes - failures - pending}\n`;
+      message += `• Failures: ${failures}\n`;
+      message += `• Pending: ${pending}\n\n`;
+    } else {
+      message += `**Content Tracked:** 0 items\n`;
+      message += `Still learning! I need to create more content to evolve.\n\n`;
+    }
+
+    if (evolutionData?.latestInsight) {
+      const insight = evolutionData.latestInsight;
+      message += `**Latest Insight** (${new Date(insight.generatedAt).toLocaleDateString()}):\n`;
+      message += `${insight.personalityEvolution}\n\n`;
+      
+      if (insight.successfulPatterns.length > 0) {
+        message += `**What works for me:**\n`;
+        for (const pattern of insight.successfulPatterns.slice(0, 3)) {
+          message += `• ${pattern}\n`;
+        }
+        message += `\n`;
+      }
+      
+      if (insight.styleRecommendation) {
+        message += `**My evolved style:** ${insight.styleRecommendation}\n`;
+      }
+    } else {
+      message += `**Insights:** Not enough data yet. I need ~5 posts to start analyzing patterns.\n`;
     }
 
     await this.send(chatId, message);
