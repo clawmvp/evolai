@@ -1,7 +1,7 @@
 import TelegramBot from "node-telegram-bot-api";
 import OpenAI from "openai";
 import { CONFIG } from "../config/index.js";
-import { EVOLAI_PERSONALITY } from "../config/personality.js";
+import { getPersonality } from "../config/personality.js";
 import { memory } from "../memory/index.js";
 import { sqliteStore } from "../memory/sqlite.store.js";
 import { moltbook } from "../moltbook/client.js";
@@ -339,10 +339,14 @@ Last heartbeat: ${memoryData.lastHeartbeat || "never"}
 `;
 
       // Build messages for GPT
+      // Get personality with wallet address
+      const walletAddress = evolaiWallet.getAddress();
+      const personality = getPersonality(walletAddress);
+
       const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
         {
           role: "system",
-          content: `${EVOLAI_PERSONALITY}
+          content: `${personality}
 
 ---
 

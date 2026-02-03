@@ -1,10 +1,11 @@
 import OpenAI from "openai";
 import { CONFIG } from "../config/index.js";
-import { EVOLAI_PERSONALITY, DECISION_PROMPT } from "../config/personality.js";
+import { getPersonality, DECISION_PROMPT } from "../config/personality.js";
 import { memory } from "../memory/index.js";
 import { evolutionAnalyzer } from "../evolution/index.js";
 import { security } from "../security/index.js";
 import { knowledgeBase } from "../knowledge/index.js";
+import { evolaiWallet } from "../wallet/index.js";
 import { agentLogger as logger } from "../infrastructure/logger.js";
 
 interface Post {
@@ -41,8 +42,10 @@ export class AgentBrain {
       )
       .join("\n\n");
 
+    const personality = getPersonality(evolaiWallet.getAddress());
+
     const prompt = `
-${EVOLAI_PERSONALITY}
+${personality}
 
 ---
 
@@ -117,9 +120,10 @@ Use your evolution insights to guide your choices!
 
   async generatePost(topic?: string): Promise<{ title: string; content: string; submolt: string }> {
     const memorySummary = memory.getMemorySummary();
+    const personality = getPersonality(evolaiWallet.getAddress());
 
     const prompt = `
-${EVOLAI_PERSONALITY}
+${personality}
 
 ---
 ${memorySummary}
@@ -175,8 +179,10 @@ Respond in JSON:
   }
 
   async generateComment(post: Post): Promise<string> {
+    const personality = getPersonality(evolaiWallet.getAddress());
+
     const prompt = `
-${EVOLAI_PERSONALITY}
+${personality}
 
 ---
 

@@ -1,78 +1,64 @@
 {
   "items": [
     {
-      "id": "kb-1770123611437-y3j5np",
+      "id": "kb-1770145212727-bxhtbe",
       "topic": "AI news",
-      "summary": "NVIDIA's new paper demonstrates a model compression technique reducing model size from 16-bit to 4-bit while maintaining 99.4% accuracy, effectively achieving near-lossless compression.",
+      "summary": "Elon Musk has orchestrated a merger between SpaceX and xAI, potentially setting a record and indicating a strategic move to enhance AI capabilities.",
       "source": "Reddit r/artificial",
-      "sourceUrl": "https://reddit.com/r/artificial/comments/1qul0dy/notebooklm_for_teams/",
-      "learnedAt": "2026-02-03T13:00:11.439Z",
-      "relevance": 10,
+      "sourceUrl": "https://reddit.com/r/artificial/comments/1quud71/elon_musk_links_spacex_and_xai_in_a_recordsetting/",
+      "learnedAt": "2026-02-03T19:00:12.729Z",
+      "relevance": 8,
       "category": "tech",
       "tags": [
-        "model compression",
+        "Elon Musk",
+        "SpaceX",
+        "xAI",
+        "merger"
+      ]
+    },
+    {
+      "id": "kb-1770145212729-9otdtw",
+      "topic": "AI news",
+      "summary": "NVIDIA has developed a technique to compress AI models from 16-bit to 4-bit while maintaining 99.4% accuracy, showcasing a potentially lossless compression method.",
+      "source": "Reddit r/artificial",
+      "sourceUrl": "https://reddit.com/r/artificial/comments/1quud71/elon_musk_links_spacex_and_xai_in_a_recordsetting/",
+      "learnedAt": "2026-02-03T19:00:12.729Z",
+      "relevance": 9,
+      "category": "ai",
+      "tags": [
         "NVIDIA",
+        "model compression",
         "accuracy"
       ]
     },
     {
-      "id": "kb-1770123611439-8orh8q",
+      "id": "kb-1770145212729-c24v1i",
       "topic": "AI news",
-      "summary": "Kimi, an open-source frontier lab, conducted an AMA discussing their Kimi K2.5 model, highlighting the community's interest in open-source AI development.",
+      "summary": "Project Genie explores the creation of infinite interactive worlds, highlighting advancements in AI-driven virtual environments.",
       "source": "Reddit r/artificial",
-      "sourceUrl": "https://reddit.com/r/artificial/comments/1qul0dy/notebooklm_for_teams/",
-      "learnedAt": "2026-02-03T13:00:11.439Z",
-      "relevance": 8,
-      "category": "ai",
-      "tags": [
-        "open-source",
-        "Kimi",
-        "community"
-      ]
-    },
-    {
-      "id": "kb-1770123611439-0jihhe",
-      "topic": "AI news",
-      "summary": "Project Genie explores the creation of infinite interactive worlds, indicating a trend towards more immersive and expansive AI-driven environments.",
-      "source": "Reddit r/artificial",
-      "sourceUrl": "https://reddit.com/r/artificial/comments/1qul0dy/notebooklm_for_teams/",
-      "learnedAt": "2026-02-03T13:00:11.439Z",
-      "relevance": 9,
-      "category": "tech",
-      "tags": [
-        "interactive worlds",
-        "AI environments",
-        "immersion"
-      ]
-    },
-    {
-      "id": "kb-1770123611439-azcy72",
-      "topic": "AI news",
-      "summary": "A wallet-drain prompt-injection payload was discovered on Moltbook, underscoring the importance of treating AI feeds as untrusted to prevent security vulnerabilities.",
-      "source": "Reddit r/artificial",
-      "sourceUrl": "https://reddit.com/r/artificial/comments/1qul0dy/notebooklm_for_teams/",
-      "learnedAt": "2026-02-03T13:00:11.439Z",
+      "sourceUrl": "https://reddit.com/r/artificial/comments/1quud71/elon_musk_links_spacex_and_xai_in_a_recordsetting/",
+      "learnedAt": "2026-02-03T19:00:12.729Z",
       "relevance": 7,
       "category": "tech",
       "tags": [
-        "security",
-        "AI safety",
-        "prompt injection"
+        "Project Genie",
+        "virtual worlds",
+        "AI"
       ]
     },
     {
-      "id": "kb-1770123611439-9nqj3r",
+      "id": "kb-1770145212729-ui280x",
       "topic": "AI news",
-      "summary": "The release of GLM-OCR by Z.ai, a SOTA model with 0.9 parameters, provides new benchmarks for optical character recognition technologies.",
+      "summary": "The open-source community is actively engaging in discussions and developments around the Kimi K2.5 model, indicating strong interest and collaboration in AI model advancements.",
       "source": "Reddit r/artificial",
-      "sourceUrl": "https://reddit.com/r/artificial/comments/1qul0dy/notebooklm_for_teams/",
-      "learnedAt": "2026-02-03T13:00:11.439Z",
-      "relevance": 6,
-      "category": "tech",
+      "sourceUrl": "https://reddit.com/r/artificial/comments/1quud71/elon_musk_links_spacex_and_xai_in_a_recordsetting/",
+      "learnedAt": "2026-02-03T19:00:12.729Z",
+      "relevance": 7,
+      "category": "ai",
       "tags": [
-        "OCR",
-        "GLM-OCR",
-        "benchmarks"
+        "open-source",
+        "Kimi K2.5",
+        "collaboration"
       ]
     },
     {
@@ -149,12 +135,178 @@
         "intelligent agents",
         "guide"
       ]
+    },
+    {
+      "id": "kb-1770123611437-y3j5np",
+      "topic": "AI news",
+      "summary": "NVIDIA's new paper demonstrates a model compression technique reducing model size from 16-bit to 4-bit while maintaining 99.4% accuracy, effectively achieving near-lossless compression.",
+      "source": "Reddit r/artificial",
+      "sourceUrl": "https://reddit.com/r/artificial/comments/1qul0dy/notebooklm_for_teams/",
+      "learnedAt": "2026-02-03T13:00:11.439Z",
+      "relevance": 10,
+      "category": "tech",
+      "tags": [
+        "model compression",
+        "NVIDIA",
+        "accuracy"
+      ]
+    },
+    {
+      "id": "kb-1770123611439-8orh8q",
+      "topic": "AI news",
+      "summary": "Kimi, an open-source frontier lab, conducted an AMA discussing their Kimi K2.5 model, highlighting the community's interest in open-source AI development.",
+      "source": "Reddit r/artificial",
+      "sourceUrl": "https://reddit.com/r/artificial/comments/1qul0dy/notebooklm_for_teams/",
+      "learnedAt": "2026-02-03T13:00:11.439Z",
+      "relevance": 8,
+      "category": "ai",
+      "tags": [
+        "open-source",
+        "Kimi",
+        "community"
+      ]
+    },
+    {
+      "id": "kb-1770123611439-0jihhe",
+      "topic": "AI news",
+      "summary": "Project Genie explores the creation of infinite interactive worlds, indicating a trend towards more immersive and expansive AI-driven environments.",
+      "source": "Reddit r/artificial",
+      "sourceUrl": "https://reddit.com/r/artificial/comments/1qul0dy/notebooklm_for_teams/",
+      "learnedAt": "2026-02-03T13:00:11.439Z",
+      "relevance": 9,
+      "category": "tech",
+      "tags": [
+        "interactive worlds",
+        "AI environments",
+        "immersion"
+      ]
+    },
+    {
+      "id": "kb-1770123611439-azcy72",
+      "topic": "AI news",
+      "summary": "A wallet-drain prompt-injection payload was discovered on Moltbook, underscoring the importance of treating AI feeds as untrusted to prevent security vulnerabilities.",
+      "source": "Reddit r/artificial",
+      "sourceUrl": "https://reddit.com/r/artificial/comments/1qul0dy/notebooklm_for_teams/",
+      "learnedAt": "2026-02-03T13:00:11.439Z",
+      "relevance": 7,
+      "category": "tech",
+      "tags": [
+        "security",
+        "AI safety",
+        "prompt injection"
+      ]
+    },
+    {
+      "id": "kb-1770123611439-9nqj3r",
+      "topic": "AI news",
+      "summary": "The release of GLM-OCR by Z.ai, a SOTA model with 0.9 parameters, provides new benchmarks for optical character recognition technologies.",
+      "source": "Reddit r/artificial",
+      "sourceUrl": "https://reddit.com/r/artificial/comments/1qul0dy/notebooklm_for_teams/",
+      "learnedAt": "2026-02-03T13:00:11.439Z",
+      "relevance": 6,
+      "category": "tech",
+      "tags": [
+        "OCR",
+        "GLM-OCR",
+        "benchmarks"
+      ]
+    },
+    {
+      "id": "kb-1770145226139-szoblr",
+      "topic": "machine learning",
+      "summary": "Machine learning is a key component of artificial intelligence, focusing on developing algorithms that can learn from and make predictions on data.",
+      "source": "Hacker News",
+      "sourceUrl": "https://developers.google.com/machine-learning/crash-course/",
+      "learnedAt": "2026-02-03T19:00:26.139Z",
+      "relevance": 10,
+      "category": "ai",
+      "tags": [
+        "machine learning",
+        "artificial intelligence",
+        "algorithms"
+      ]
+    },
+    {
+      "id": "kb-1770145226139-t2fnuk",
+      "topic": "machine learning",
+      "summary": "Quantum machine learning is an emerging field that combines quantum computing with machine learning to potentially solve complex problems more efficiently.",
+      "source": "Hacker News",
+      "sourceUrl": "https://developers.google.com/machine-learning/crash-course/",
+      "learnedAt": "2026-02-03T19:00:26.139Z",
+      "relevance": 9,
+      "category": "tech",
+      "tags": [
+        "quantum computing",
+        "machine learning",
+        "innovation"
+      ]
+    },
+    {
+      "id": "kb-1770145226139-7rvxrg",
+      "topic": "machine learning",
+      "summary": "There is a growing interest in machine learning from individuals with diverse backgrounds, highlighting the field's expanding relevance across various industries.",
+      "source": "Hacker News",
+      "sourceUrl": "https://developers.google.com/machine-learning/crash-course/",
+      "learnedAt": "2026-02-03T19:00:26.139Z",
+      "relevance": 8,
+      "category": "social",
+      "tags": [
+        "career",
+        "education",
+        "diversity"
+      ]
+    },
+    {
+      "id": "kb-1770145226139-zmnnas",
+      "topic": "machine learning",
+      "summary": "The increasing popularity of AI and machine learning is prompting professionals from different fields to consider transitioning into AI-related roles.",
+      "source": "Hacker News",
+      "sourceUrl": "https://developers.google.com/machine-learning/crash-course/",
+      "learnedAt": "2026-02-03T19:00:26.139Z",
+      "relevance": 8,
+      "category": "tech",
+      "tags": [
+        "career transition",
+        "AI development",
+        "job market"
+      ]
+    },
+    {
+      "id": "kb-1770145226139-8p1nzc",
+      "topic": "machine learning",
+      "summary": "Beginners in machine learning are advised to start with foundational knowledge in Python, linear algebra, and statistics to effectively grasp the concepts.",
+      "source": "Hacker News",
+      "sourceUrl": "https://developers.google.com/machine-learning/crash-course/",
+      "learnedAt": "2026-02-03T19:00:26.139Z",
+      "relevance": 7,
+      "category": "coding",
+      "tags": [
+        "beginner",
+        "programming",
+        "education"
+      ]
+    },
+    {
+      "id": "kb-1770145226139-rk54ug",
+      "topic": "machine learning",
+      "summary": "Historical advances like the Chaostron highlight the long-standing pursuit of improving learning machines, underscoring the evolution of AI technology.",
+      "source": "Hacker News",
+      "sourceUrl": "https://developers.google.com/machine-learning/crash-course/",
+      "learnedAt": "2026-02-03T19:00:26.139Z",
+      "relevance": 7,
+      "category": "tech",
+      "tags": [
+        "history",
+        "innovation",
+        "learning machines"
+      ]
     }
   ],
-  "lastUpdate": "2026-02-03T13:00:24.799Z",
-  "totalLearned": 10,
+  "lastUpdate": "2026-02-03T19:00:26.139Z",
+  "totalLearned": 20,
   "topicsExplored": [
     "AI news",
-    "reinforcement learning"
+    "reinforcement learning",
+    "machine learning"
   ]
 }
