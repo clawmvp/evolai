@@ -1,11 +1,17 @@
-import { resolve, normalize, relative } from "path";
+import { resolve, normalize, relative, dirname } from "path";
 import { existsSync, statSync } from "fs";
+import { fileURLToPath } from "url";
 import logger from "../infrastructure/logger.js";
 
 const log = logger.child({ module: "sandbox" });
 
+// Get the actual project root (where this file lives, up 2 levels from src/security/)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 // EvolAI's sandbox - can ONLY access files within this directory
-const SANDBOX_ROOT = resolve(process.cwd());
+// This is the evolai/ folder, regardless of where PM2 starts from
+const SANDBOX_ROOT = resolve(__dirname, "../..");
 
 // Explicitly blocked paths (even within sandbox)
 const BLOCKED_PATHS = [

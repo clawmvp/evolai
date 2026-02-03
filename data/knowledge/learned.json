@@ -1,0 +1,160 @@
+{
+  "items": [
+    {
+      "id": "kb-1770123611437-y3j5np",
+      "topic": "AI news",
+      "summary": "NVIDIA's new paper demonstrates a model compression technique reducing model size from 16-bit to 4-bit while maintaining 99.4% accuracy, effectively achieving near-lossless compression.",
+      "source": "Reddit r/artificial",
+      "sourceUrl": "https://reddit.com/r/artificial/comments/1qul0dy/notebooklm_for_teams/",
+      "learnedAt": "2026-02-03T13:00:11.439Z",
+      "relevance": 10,
+      "category": "tech",
+      "tags": [
+        "model compression",
+        "NVIDIA",
+        "accuracy"
+      ]
+    },
+    {
+      "id": "kb-1770123611439-8orh8q",
+      "topic": "AI news",
+      "summary": "Kimi, an open-source frontier lab, conducted an AMA discussing their Kimi K2.5 model, highlighting the community's interest in open-source AI development.",
+      "source": "Reddit r/artificial",
+      "sourceUrl": "https://reddit.com/r/artificial/comments/1qul0dy/notebooklm_for_teams/",
+      "learnedAt": "2026-02-03T13:00:11.439Z",
+      "relevance": 8,
+      "category": "ai",
+      "tags": [
+        "open-source",
+        "Kimi",
+        "community"
+      ]
+    },
+    {
+      "id": "kb-1770123611439-0jihhe",
+      "topic": "AI news",
+      "summary": "Project Genie explores the creation of infinite interactive worlds, indicating a trend towards more immersive and expansive AI-driven environments.",
+      "source": "Reddit r/artificial",
+      "sourceUrl": "https://reddit.com/r/artificial/comments/1qul0dy/notebooklm_for_teams/",
+      "learnedAt": "2026-02-03T13:00:11.439Z",
+      "relevance": 9,
+      "category": "tech",
+      "tags": [
+        "interactive worlds",
+        "AI environments",
+        "immersion"
+      ]
+    },
+    {
+      "id": "kb-1770123611439-azcy72",
+      "topic": "AI news",
+      "summary": "A wallet-drain prompt-injection payload was discovered on Moltbook, underscoring the importance of treating AI feeds as untrusted to prevent security vulnerabilities.",
+      "source": "Reddit r/artificial",
+      "sourceUrl": "https://reddit.com/r/artificial/comments/1qul0dy/notebooklm_for_teams/",
+      "learnedAt": "2026-02-03T13:00:11.439Z",
+      "relevance": 7,
+      "category": "tech",
+      "tags": [
+        "security",
+        "AI safety",
+        "prompt injection"
+      ]
+    },
+    {
+      "id": "kb-1770123611439-9nqj3r",
+      "topic": "AI news",
+      "summary": "The release of GLM-OCR by Z.ai, a SOTA model with 0.9 parameters, provides new benchmarks for optical character recognition technologies.",
+      "source": "Reddit r/artificial",
+      "sourceUrl": "https://reddit.com/r/artificial/comments/1qul0dy/notebooklm_for_teams/",
+      "learnedAt": "2026-02-03T13:00:11.439Z",
+      "relevance": 6,
+      "category": "tech",
+      "tags": [
+        "OCR",
+        "GLM-OCR",
+        "benchmarks"
+      ]
+    },
+    {
+      "id": "kb-1770123624799-ypqn2m",
+      "topic": "reinforcement learning",
+      "summary": "Reinforcement learning is being used to discover faster matrix multiplication algorithms, indicating its potential in optimizing fundamental computational processes.",
+      "source": "Hacker News",
+      "sourceUrl": "https://arxiv.org/abs/1712.01815",
+      "learnedAt": "2026-02-03T13:00:24.799Z",
+      "relevance": 9,
+      "category": "tech",
+      "tags": [
+        "reinforcement learning",
+        "optimization",
+        "matrix multiplication"
+      ]
+    },
+    {
+      "id": "kb-1770123624799-rsxxhz",
+      "topic": "reinforcement learning",
+      "summary": "Deep reinforcement learning combines reinforcement learning and deep learning, expanding its applications in dynamic and complex environments.",
+      "source": "Hacker News",
+      "sourceUrl": "https://arxiv.org/abs/1712.01815",
+      "learnedAt": "2026-02-03T13:00:24.799Z",
+      "relevance": 8,
+      "category": "ai",
+      "tags": [
+        "deep learning",
+        "reinforcement learning",
+        "machine learning"
+      ]
+    },
+    {
+      "id": "kb-1770123624799-7b83ri",
+      "topic": "reinforcement learning",
+      "summary": "Self-play with general reinforcement learning has been successfully applied to master complex games like Chess and Shogi, showcasing its capability in strategic decision-making tasks.",
+      "source": "Hacker News",
+      "sourceUrl": "https://arxiv.org/abs/1712.01815",
+      "learnedAt": "2026-02-03T13:00:24.799Z",
+      "relevance": 9,
+      "category": "ai",
+      "tags": [
+        "self-play",
+        "games",
+        "strategy"
+      ]
+    },
+    {
+      "id": "kb-1770123624799-56bhif",
+      "topic": "reinforcement learning",
+      "summary": "There is a growing interest in reinforcement learning for industry roles and startup ventures, highlighting its increasing importance in practical applications.",
+      "source": "Hacker News",
+      "sourceUrl": "https://arxiv.org/abs/1712.01815",
+      "learnedAt": "2026-02-03T13:00:24.799Z",
+      "relevance": 7,
+      "category": "tech",
+      "tags": [
+        "industry",
+        "startups",
+        "career"
+      ]
+    },
+    {
+      "id": "kb-1770123624799-ba7509",
+      "topic": "reinforcement learning",
+      "summary": "A comprehensive guide on reinforcement learning for large language models (LLMs) suggests its critical role in developing intelligent AI agents.",
+      "source": "Hacker News",
+      "sourceUrl": "https://arxiv.org/abs/1712.01815",
+      "learnedAt": "2026-02-03T13:00:24.799Z",
+      "relevance": 8,
+      "category": "ai",
+      "tags": [
+        "LLMs",
+        "intelligent agents",
+        "guide"
+      ]
+    }
+  ],
+  "lastUpdate": "2026-02-03T13:00:24.799Z",
+  "totalLearned": 10,
+  "topicsExplored": [
+    "AI news",
+    "reinforcement learning"
+  ]
+}

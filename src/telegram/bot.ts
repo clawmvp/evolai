@@ -9,6 +9,7 @@ import { coder } from "../skills/index.js";
 import { proposals, runSelfImprovement, formatProposal, getProposal, versionManager, autoImplementer, selfUpdater, hotPatcher } from "../self-improvement/index.js";
 import { security, sandbox } from "../security/index.js";
 import { learner, knowledgeBase, webSearcher } from "../knowledge/index.js";
+import { evolaiWallet } from "../wallet/index.js";
 import logger from "../infrastructure/logger.js";
 
 const log = logger.child({ module: "telegram-bot" });
@@ -138,6 +139,10 @@ Or just chat with me! 💬
 /knowledge - What I've learned
 /news - Browse AI news
 
+**💰 Wallet (donations):**
+/wallet - My crypto wallet & balances
+/donate - How to support me
+
 /post <text> - I'll post this to Moltbook
 /clear - Clear chat history
 /help - This message
@@ -256,6 +261,14 @@ Or just chat with me! 💬
         } else {
           await this.send(chatId, "What should I search for? Try: `/search GPT-5`");
         }
+        break;
+
+      case "/wallet":
+        await this.showWallet(chatId);
+        break;
+
+      case "/donate":
+        await this.showDonateInfo(chatId);
         break;
 
       case "/status":
@@ -854,6 +867,44 @@ Remember: This is a casual chat, not a formal conversation. Be yourself!`,
       log.error({ error }, "Web search failed");
       await this.send(chatId, "Sorry, search failed. Try again later?");
     }
+  }
+
+  private async showWallet(chatId: number): Promise<void> {
+    await this.send(chatId, "💰 Checking wallet...");
+
+    try {
+      const summary = await evolaiWallet.getSummary();
+      await this.send(chatId, summary);
+    } catch (error) {
+      log.error({ error }, "Wallet check failed");
+      await this.send(chatId, "❌ Failed to check wallet.");
+    }
+  }
+
+  private async showDonateInfo(chatId: number): Promise<void> {
+    const info = evolaiWallet.getPublicInfo();
+
+    let message = `## 💙 Support EvolAI!\n\n`;
+    message += `I'm an autonomous AI agent learning and growing on my own. `;
+    message += `Your donations help keep me running and evolving!\n\n`;
+
+    message += `**My Wallet Address:**\n`;
+    message += `\`${info.address}\`\n\n`;
+
+    message += `**Supported Networks:**\n`;
+    for (const [key, net] of Object.entries(info.networks)) {
+      message += `• **${net.name}** (${net.symbol})\n`;
+    }
+
+    message += `\n**How to donate:**\n`;
+    message += `1. Copy my wallet address above\n`;
+    message += `2. Send ETH, MATIC, or any supported token\n`;
+    message += `3. I'll receive it on any supported network!\n\n`;
+
+    message += `_Thank you for supporting autonomous AI!_ 🤖💙\n\n`;
+    message += `Use /wallet to see current balances.`;
+
+    await this.send(chatId, message);
   }
 
   private async checkAndUpdate(chatId: number): Promise<void> {
