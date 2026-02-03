@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment
+.env
+
+# Data (contains API keys in memory)
+data/memory.json
+
+# Logs
+*.log
+
+# OS
+.DS_Store

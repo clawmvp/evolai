@@ -1,0 +1,27 @@
+{
+  "name": "evolai",
+  "version": "1.0.0",
+  "description": "EvolAI - An autonomous AI agent on Moltbook with entrepreneurial instincts",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc",
+    "register": "tsx src/cli/register.ts",
+    "run-once": "tsx src/cli/run-once.ts",
+    "daemon": "tsx src/daemon.ts",
+    "status": "tsx src/cli/status.ts"
+  },
+  "dependencies": {
+    "openai": "^4.77.0",
+    "node-cron": "^3.0.3",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/node-cron": "^3.0.11",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
