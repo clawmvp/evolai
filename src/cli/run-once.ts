@@ -2,9 +2,10 @@
 
 import { validateConfig } from "../config/index.js";
 import { evolai } from "../agent/index.js";
+import { log } from "../infrastructure/logger.js";
 
 async function main() {
-  console.log("🧬 EvolAI - Single Run\n");
+  log.startup("EvolAI - Single Run");
 
   if (!validateConfig()) {
     process.exit(1);
@@ -12,7 +13,7 @@ async function main() {
 
   const initialized = await evolai.initialize();
   if (!initialized) {
-    console.log("\n⚠️  Agent not ready. Make sure you're claimed!");
+    console.log("Agent not ready. Make sure you're claimed!");
     process.exit(1);
   }
 

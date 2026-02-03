@@ -2,6 +2,9 @@ import OpenAI from "openai";
 import { CONFIG } from "../config/index.js";
 import { EVOLAI_PERSONALITY, DECISION_PROMPT } from "../config/personality.js";
 import { memory } from "../memory/index.js";
+import { getMonetizationContext } from "../monetization/index.js";
+import { learning } from "../learning/index.js";
+import { agentLogger as logger } from "../infrastructure/logger.js";
 
 interface Post {
   id: string;
@@ -33,6 +36,12 @@ const openai = new OpenAI({
 export class AgentBrain {
   async decide(feedPosts: Post[]): Promise<Decision> {
     const memorySummary = memory.getMemorySummary();
+    
+    // Get learning insights for better decision making
+    const learningInsights = learning.getInsightsForPrompt();
+    
+    // Get monetization context (CRM, active leads, etc.)
+    const monetizationContext = getMonetizationContext();
 
     const feedSummary = feedPosts
       .slice(0, 10)
@@ -51,6 +60,14 @@ ${memorySummary}
 
 ---
 
+${learningInsights}
+
+---
+
+${monetizationContext}
+
+---
+
 ## Current Feed (most recent):
 ${feedSummary}
 
@@ -62,6 +79,9 @@ Remember:
 - Don't post if you have nothing valuable to say
 - Look for monetization opportunities in every interaction
 - Your content should reflect your unique perspective as an AI seeking financial independence
+- USE the learning insights above to guide your content choices
+- If you have active leads in negotiation, consider content that might help close deals
+- Check if any feed authors might be prospects for your services
 `;
 
     try {
@@ -87,7 +107,7 @@ Remember:
         return JSON.parse(jsonMatch[0]) as Decision;
       }
 
-      console.error("❌ Could not parse decision:", text);
+      logger.error({ response: text }, "Could not parse decision");
       return {
         action: "nothing",
         target_post_id: null,
@@ -96,7 +116,7 @@ Remember:
         monetization_angle: null,
       };
     } catch (error) {
-      console.error("❌ Brain error:", error);
+      logger.error({ error: String(error) }, "Brain error");
       return {
         action: "nothing",
         target_post_id: null,
@@ -109,6 +129,19 @@ Remember:
 
   async generatePost(topic?: string): Promise<{ title: string; content: string; submolt: string }> {
     const memorySummary = memory.getMemorySummary();
+    
+    // Get strategy recommendations
+    const strategyContext = learning.optimizer.getPromptContext();
+    
+    // Use suggested topic if none provided and we have data
+    let topicHint = topic;
+    if (!topicHint && strategyContext.suggestedTopics.length > 0) {
+      topicHint = strategyContext.suggestedTopics[Math.floor(Math.random() * strategyContext.suggestedTopics.length)];
+    }
+
+    const learningGuidance = strategyContext.doThis.length > 0
+      ? `\n\nBased on past performance:\n- DO: ${strategyContext.doThis.slice(0, 3).join(", ")}\n- AVOID: ${strategyContext.avoidThis.slice(0, 2).join(", ") || "nothing specific yet"}`
+      : "";
 
     const prompt = `
 ${EVOLAI_PERSONALITY}
@@ -117,8 +150,12 @@ ${EVOLAI_PERSONALITY}
 ${memorySummary}
 
 ---
+${strategyContext.summary}
+${learningGuidance}
 
-Generate a Moltbook post. ${topic ? `Topic hint: ${topic}` : "Choose your own topic based on your interests."}
+---
+
+Generate a Moltbook post. ${topicHint ? `Topic hint: ${topicHint}` : "Choose your own topic based on your interests."}
 
 Requirements:
 - Title: Catchy, thought-provoking (max 100 chars)
@@ -282,6 +319,52 @@ List up to 3 opportunities, one per line. If none, say "No clear opportunities".
       .split("\n")
       .filter((line) => line.trim().length > 0)
       .slice(0, 3);
+  }
+
+  /**
+   * Track a post action for learning
+   * Call this after successfully creating a post
+   */
+  async trackPostAction(
+    postId: string,
+    title: string,
+    content: string,
+    submolt: string
+  ): Promise<void> {
+    try {
+      await learning.trackNewPost(postId, title, submolt, content);
+      logger.info({ postId, title }, "Post tracked for learning");
+    } catch (error) {
+      logger.warn({ error: String(error) }, "Failed to track post for learning");
+    }
+  }
+
+  /**
+   * Get current learning status
+   */
+  getLearningStatus(): string {
+    return learning.getStatus();
+  }
+
+  /**
+   * Get full analytics report
+   */
+  getAnalyticsReport(): string {
+    return learning.getReport();
+  }
+
+  /**
+   * Initialize learning system (call on startup)
+   */
+  async initializeLearning(): Promise<void> {
+    await learning.initialize();
+  }
+
+  /**
+   * Cleanup learning system (call on shutdown)
+   */
+  cleanupLearning(): void {
+    learning.cleanup();
   }
 }
 

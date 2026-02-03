@@ -9,6 +9,10 @@ async function main() {
   }
 
   await evolai.showStatus();
+
+  // Also print to console for CLI readability
+  const { memory } = await import("../memory/index.js");
+  console.log("\n" + memory.getMemorySummary());
 }
 
 main().catch(console.error);

@@ -24,9 +24,16 @@ export const CONFIG = {
     heartbeatHours: parseInt(process.env.HEARTBEAT_HOURS || "4"),
   },
 
+  // Telegram notifications
+  telegram: {
+    botToken: process.env.TELEGRAM_BOT_TOKEN || "",
+    adminId: process.env.TELEGRAM_ADMIN_ID || "",
+  },
+
   // Paths
   paths: {
     memory: resolve(process.cwd(), "data/memory.json"),
+    database: resolve(process.cwd(), "data/memory.db"),
     logs: resolve(process.cwd(), "data/logs"),
   },
 };
@@ -38,7 +45,8 @@ export function validateConfig(): boolean {
   if (!CONFIG.openai.apiKey) missing.push("OPENAI_API_KEY");
 
   if (missing.length > 0) {
-    console.error("❌ Missing required config:", missing.join(", "));
+    // Use console here since logger might not be initialized yet
+    console.error("Missing required config:", missing.join(", "));
     return false;
   }
 

@@ -3,57 +3,67 @@
 import cron from "node-cron";
 import { validateConfig, CONFIG } from "./config/index.js";
 import { evolai } from "./agent/index.js";
+import { notify } from "./notifications/index.js";
+import { daemonLogger as logger, log } from "./infrastructure/logger.js";
+import { startHealthServer } from "./infrastructure/health.js";
 
 async function main() {
-  console.log("🧬 EvolAI Daemon Starting...\n");
+  log.startup("EvolAI Daemon Starting...");
 
   if (!validateConfig()) {
     process.exit(1);
   }
 
+  // Start health check server
+  startHealthServer();
+
   const initialized = await evolai.initialize();
   if (!initialized) {
-    console.log("\n⚠️  Agent not ready. Waiting for claim...");
-    console.log("   Will retry every hour.");
+    logger.warn("Agent not ready. Waiting for claim... Will retry every hour.");
   }
 
+  // Send startup notification
+  await notify.startup();
+
   // Run immediately on start
-  console.log("\n🚀 Running initial heartbeat...");
+  logger.info("Running initial heartbeat...");
   await evolai.runHeartbeat();
 
   // Schedule heartbeats
   const hours = CONFIG.agent.heartbeatHours;
   const cronExpression = `0 */${hours} * * *`; // Every N hours
 
-  console.log(`\n⏰ Scheduling heartbeats every ${hours} hours`);
-  console.log(`   Cron expression: ${cronExpression}`);
-  console.log("\n🔄 Daemon running. Press Ctrl+C to stop.\n");
+  logger.info({ intervalHours: hours, cronExpression }, "Scheduling heartbeats");
+  logger.info("Daemon running. Press Ctrl+C to stop.");
 
   cron.schedule(cronExpression, async () => {
-    console.log("\n⏰ Scheduled heartbeat triggered");
+    logger.info("Scheduled heartbeat triggered");
     await evolai.runHeartbeat();
   });
 
   // Also run a quick check every hour to look for opportunities
   cron.schedule("30 * * * *", async () => {
-    console.log("\n👀 Quick opportunity scan...");
+    logger.debug("Quick opportunity scan...");
     // Just check for @mentions or DMs in the future
     // For now, this is a placeholder
   });
 
-  // Keep the process alive
-  process.on("SIGINT", () => {
-    console.log("\n\n👋 EvolAI shutting down gracefully...");
+  // Keep the process alive with graceful shutdown
+  process.on("SIGINT", async () => {
+    logger.info("EvolAI shutting down gracefully...");
+    await notify.shutdown("Manual stop (SIGINT)");
     process.exit(0);
   });
 
-  process.on("SIGTERM", () => {
-    console.log("\n\n👋 EvolAI terminated...");
+  process.on("SIGTERM", async () => {
+    logger.info("EvolAI terminated...");
+    await notify.shutdown("Process terminated (SIGTERM)");
     process.exit(0);
   });
 }
 
-main().catch((error) => {
-  console.error("❌ Fatal error:", error);
+main().catch(async (error) => {
+  logger.fatal({ error: String(error) }, "Fatal error");
+  await notify.alert("Fatal daemon error", error instanceof Error ? error : new Error(String(error)));
   process.exit(1);
 });

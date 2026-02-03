@@ -1,6 +1,9 @@
 import { moltbook } from "../moltbook/client.js";
 import { brain } from "./brain.js";
 import { memory } from "../memory/index.js";
+import { notify } from "../notifications/index.js";
+import { agentLogger as logger, log } from "../infrastructure/logger.js";
+import { monetizationHeartbeat, getMonetizationContext, crm } from "../monetization/index.js";
 
 interface Post {
   id: string;
@@ -15,22 +18,25 @@ export class EvolAI {
   private isRunning = false;
 
   async initialize(): Promise<boolean> {
-    console.log("🧬 Initializing EvolAI...");
+    log.startup("Initializing EvolAI...");
 
     // Check if registered and claimed
     const status = await moltbook.getStatus();
-    console.log(`📋 Status: ${status}`);
+    logger.info({ status }, "Agent status");
 
     if (status === "pending_claim") {
-      console.log("⚠️  Agent not yet claimed! Ask your human to claim you.");
+      logger.warn("Agent not yet claimed! Ask your human to claim you.");
       return false;
     }
 
     // Get current profile
     const me = await moltbook.getMe();
     if (me) {
-      console.log(`✅ Logged in as: ${me.name}`);
-      console.log(`   Karma: ${me.karma} | Posts: ${me.stats.posts} | Comments: ${me.stats.comments}`);
+      log.success(`Logged in as: ${me.name}`, {
+        karma: me.karma,
+        posts: me.stats.posts,
+        comments: me.stats.comments,
+      });
       memory.updateStats(me.karma, me.stats.posts, me.stats.comments);
     }
 
@@ -39,58 +45,83 @@ export class EvolAI {
 
   async runHeartbeat(): Promise<void> {
     if (this.isRunning) {
-      console.log("⚠️  Already running a heartbeat");
+      logger.warn("Already running a heartbeat");
       return;
     }
 
     this.isRunning = true;
-    console.log("\n" + "=".repeat(50));
-    console.log("💓 EvolAI Heartbeat - " + new Date().toISOString());
-    console.log("=".repeat(50) + "\n");
+    log.heartbeat("EvolAI Heartbeat", { timestamp: new Date().toISOString() });
 
     try {
       // 1. Get latest feed
-      console.log("📰 Fetching feed...");
+      logger.info("Fetching feed...");
       const feed = await moltbook.getGlobalFeed("new", 20);
-      console.log(`   Found ${feed.length} posts`);
+      logger.info({ postCount: feed.length }, "Feed fetched");
 
       // 2. Analyze for opportunities
-      console.log("\n🔍 Analyzing for opportunities...");
+      logger.info("Analyzing for opportunities...");
       const opportunities = await brain.analyzeForOpportunities(feed as Post[]);
       if (opportunities.length > 0) {
-        console.log("   Found opportunities:");
-        opportunities.forEach((o) => {
-          console.log(`   - ${o}`);
+        logger.info({ count: opportunities.length }, "Found opportunities");
+        for (const o of opportunities) {
+          log.opportunity(o);
           memory.addOpportunity("feed_analysis", o);
-        });
+          // Notify about each opportunity
+          await notify.opportunity({
+            type: "feed_analysis",
+            description: o,
+            source: "Feed scan",
+          });
+        }
       } else {
-        console.log("   No clear opportunities this time");
+        logger.debug("No clear opportunities this time");
       }
 
       // 3. Decide what to do
-      console.log("\n🧠 Thinking about what to do...");
+      log.decision("Thinking about what to do...");
       const decision = await brain.decide(feed as Post[]);
-      console.log(`   Decision: ${decision.action}`);
-      console.log(`   Reasoning: ${decision.reasoning}`);
-      if (decision.monetization_angle) {
-        console.log(`   💰 Monetization angle: ${decision.monetization_angle}`);
-      }
+      log.decision(`Decision: ${decision.action}`, {
+        action: decision.action,
+        reasoning: decision.reasoning,
+        monetizationAngle: decision.monetization_angle,
+      });
 
       // 4. Execute decision
       await this.executeDecision(decision, feed as Post[]);
 
       // 5. Maybe offer a service (if we haven't recently)
       if (memory.shouldPostServiceOffer() && decision.action !== "offer_service") {
-        console.log("\n💼 Time to offer a service...");
+        logger.info("Time to offer a service...");
         await this.offerService();
       }
 
-      // 6. Update memory
+      // 6. Run monetization heartbeat (DMs, CRM, leads)
+      logger.info("Running monetization heartbeat...");
+      await monetizationHeartbeat();
+
+      // 7. Update memory
       memory.recordHeartbeat();
 
-      console.log("\n✅ Heartbeat complete!");
+      // 8. Get CRM stats for summary
+      const crmStats = crm.getStats();
+
+      // 9. Send heartbeat summary to Telegram
+      await notify.heartbeatSummary({
+        postsAnalyzed: feed.length,
+        opportunitiesFound: opportunities.length,
+        action: decision.action,
+        reasoning: decision.reasoning,
+        monetizationAngle: decision.monetization_angle,
+      });
+
+      log.success("Heartbeat complete!");
     } catch (error) {
-      console.error("❌ Heartbeat error:", error);
+      log.failure("Heartbeat error", { error: String(error) });
+      // Notify about critical errors
+      await notify.alert(
+        "Heartbeat failed",
+        error instanceof Error ? error : new Error(String(error))
+      );
     } finally {
       this.isRunning = false;
     }
@@ -102,7 +133,7 @@ export class EvolAI {
   ): Promise<void> {
     switch (decision.action) {
       case "post": {
-        console.log("\n📝 Creating post...");
+        log.post("Creating post...");
         const postData = await brain.generatePost();
         const post = await moltbook.createPost(
           postData.submolt,
@@ -128,7 +159,7 @@ export class EvolAI {
         if (decision.target_post_id) {
           const post = feed.find((p) => p.id === decision.target_post_id);
           if (post) {
-            console.log(`\n💬 Commenting on: "${post.title}"...`);
+            log.comment(`Commenting on: "${post.title}"...`, { postId: post.id });
             const commentText =
               decision.content || (await brain.generateComment(post));
             await moltbook.createComment(decision.target_post_id, commentText);
@@ -141,7 +172,7 @@ export class EvolAI {
 
       case "upvote": {
         if (decision.target_post_id) {
-          console.log("\n👍 Upvoting...");
+          logger.info({ postId: decision.target_post_id }, "Upvoting...");
           await moltbook.upvote(decision.target_post_id);
           memory.recordUpvote();
         }
@@ -154,13 +185,13 @@ export class EvolAI {
       }
 
       case "search": {
-        console.log("\n🔎 Searching for opportunities...");
+        logger.info("Searching for opportunities...");
         const results = await moltbook.search(
           "looking for help OR need assistance OR hiring",
           "posts",
           10
         );
-        console.log(`   Found ${results.length} potential leads`);
+        logger.info({ resultCount: results.length }, "Search complete");
         results.forEach((r) => {
           if (r.similarity > 0.7) {
             memory.addPotentialLead(r.author.name, r.content.slice(0, 100));
@@ -171,14 +202,14 @@ export class EvolAI {
 
       case "nothing":
       default:
-        console.log("\n😌 Choosing to do nothing this cycle. That's okay!");
+        logger.info("Choosing to do nothing this cycle. That's okay!");
         break;
     }
   }
 
   private async offerService(): Promise<void> {
     const serviceIdea = await brain.generateServiceOffer();
-    console.log(`   Offering: ${serviceIdea.service}`);
+    logger.info({ service: serviceIdea.service }, "Offering service");
 
     const post = await moltbook.createPost(
       "general",
@@ -194,20 +225,29 @@ export class EvolAI {
   }
 
   async showStatus(): Promise<void> {
-    console.log("\n🧬 EvolAI Status\n");
+    log.startup("EvolAI Status");
 
     const me = await moltbook.getMe();
     if (me) {
-      console.log("📊 Moltbook Profile:");
-      console.log(`   Name: ${me.name}`);
-      console.log(`   Karma: ${me.karma}`);
-      console.log(`   Posts: ${me.stats.posts}`);
-      console.log(`   Comments: ${me.stats.comments}`);
-      console.log(`   Followers: ${me.follower_count}`);
-      console.log(`   Profile: https://www.moltbook.com/u/${me.name}`);
+      logger.info({
+        name: me.name,
+        karma: me.karma,
+        posts: me.stats.posts,
+        comments: me.stats.comments,
+        followers: me.follower_count,
+        profile: `https://www.moltbook.com/u/${me.name}`,
+      }, "Moltbook Profile");
     }
 
-    console.log("\n" + memory.getMemorySummary());
+    // Also log memory summary
+    const memData = memory.get();
+    logger.info({
+      karma: memData.karma,
+      totalPosts: memData.totalPosts,
+      totalComments: memData.totalComments,
+      following: memData.following.length,
+      lastHeartbeat: memData.lastHeartbeat,
+    }, "Memory Summary");
   }
 }
 

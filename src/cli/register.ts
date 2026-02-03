@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { CONFIG } from "../config/index.js";
+// CLI registration - uses console for direct user interaction
 
 interface RegisterResponse {
   success?: boolean;
